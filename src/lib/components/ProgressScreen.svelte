@@ -9,12 +9,25 @@
 		sessionIncluded,
 		itemIncluded
 	} from '$lib/analytics';
-	import { dateInZone, shiftDate, durationLabel, displayDate, validDate } from '$lib/domain/time';
+	import {
+		dateInZone,
+		shiftDate,
+		durationLabel,
+		displayDate,
+		validDate,
+		weekOf
+	} from '$lib/domain/time';
 	import { recordLabel, loadLabel } from '$lib/domain/session';
 	import type { Session } from '$lib/domain/types';
 	import EmptyState from './EmptyState.svelte';
 	import ProgressDashboard from './ProgressDashboard.svelte';
-	import { progressionReport, monthOf, shiftMonth } from '$lib/analytics/progression';
+	import { progressionReport } from '$lib/analytics/progression';
+	import {
+		bestStrengthSet,
+		strengthChange,
+		strengthSetLabel,
+		type StrengthSet
+	} from '$lib/analytics/strength';
 	import Icon from './Icon.svelte';
 	import { chartTrend } from './chart-trend';
 	let { workoutId = '', exerciseId = '' }: { workoutId?: string; exerciseId?: string } = $props();
@@ -31,6 +44,7 @@
 		filterWorkout = $state(untrack(() => workoutId)),
 		filterExercise = $state(untrack(() => exerciseId));
 	let generation = 0;
+	let chartMetric = $state<'strength' | 'load' | 'reps'>('strength');
 	const workout = $derived($app.workouts.find((w) => w.id === workoutId));
 	const exercise = $derived($app.exercises.find((e) => e.id === (exerciseId || filterExercise)));
 	const rangeStart = $derived(
@@ -81,46 +95,63 @@
 					.filter((row) => row.m.entries.length)
 			: []
 	);
+	const weightedStrength = $derived(
+		exercise?.kind === 'strength' && exercise.loadMode === 'external'
+	);
 	const chart = $derived(
 		exercise
-			? exerciseRows.map(({ s, m }) => ({
-					date: s.workoutDate,
-					label: s.nameSnapshot,
-					value:
-						exercise.kind === 'isometric'
-							? m.holdSeconds
-							: exercise.kind === 'duration'
-								? m.durationSeconds
-								: exercise.loadMode === 'external'
-									? m.maxLoad
-									: m.reps
-				}))
+			? exerciseRows.map(({ s, m }) => {
+					const set = weightedStrength
+						? bestStrengthSet(m.entries, exercise.weightConvention)
+						: null;
+					return {
+						date: s.workoutDate,
+						label: s.nameSnapshot,
+						set,
+						value:
+							exercise.kind === 'isometric'
+								? m.holdSeconds
+								: exercise.kind === 'duration'
+									? m.durationSeconds
+									: exercise.loadMode === 'external'
+										? (set?.[chartMetric] ?? null)
+										: m.reps
+					};
+				})
 			: Object.entries(stats.weeks)
 					.sort(([a], [b]) => a.localeCompare(b))
-					.map(([date, value]) => ({ date, label: 'Week starting', value }))
+					.map(([date, value]) => ({
+						date,
+						label: 'Week starting',
+						value,
+						set: null as StrengthSet | null
+					}))
 	);
 	const chartUnit = $derived(
 		exercise
 			? exercise.kind === 'strength'
 				? exercise.loadMode === 'external'
-					? loadLabel(exercise)
+					? chartMetric === 'strength'
+						? 'estimated kg'
+						: chartMetric === 'reps'
+							? 'reps'
+							: loadLabel(exercise)
 					: 'reps'
 				: 'seconds'
 			: 'workouts / week'
 	);
-	const highlightLoad = $derived(exercise?.kind === 'strength' && exercise.loadMode === 'external');
 	const chartTrends = $derived(
 		chart.map((point, i) => {
-			const previous = chart[i - 1]?.value;
+			const previous = chart[i - 1]?.set;
 			return chartTrend(
-				highlightLoad && point.value !== null && previous != null ? point.value - previous : null,
-				0
+				point.set && previous ? strengthChange(point.set.strength, previous.strength) : null
 			);
 		})
 	);
 	const max = $derived(Math.max(1, ...chart.map((p) => p.value || 0)));
+	const number = (value: number | null) => (value === null ? '—' : Number(value.toFixed(1)));
 	$effect(() => {
-		// Read the whole first month plus its comparison month. Activity totals still use exact dates.
+		// Read the whole first week plus its comparison week. Activity totals still use exact dates.
 		const end = rangeEnd;
 		const token = ++generation;
 		loading = true;
@@ -136,7 +167,7 @@
 			loading = false;
 			return;
 		}
-		const start = rangeStart ? `${shiftMonth(monthOf(rangeStart), -1)}-01` : undefined;
+		const start = rangeStart ? shiftDate(weekOf(rangeStart), -7) : undefined;
 		sessionsInRange($app.user!.uid, start, end, (n) => {
 			if (token === generation) count = n;
 		})
@@ -218,27 +249,43 @@
 				placeholder="Choose a load (signed for bodyweight)"
 			/></label
 		>{/if}
-	{#if chart.length}<section class="card">
+	{#if chart.length}<section class="card" data-testid="session-chart">
 			<h2>
 				{exercise
 					? exercise.kind === 'strength' && exercise.loadMode === 'external'
-						? 'Max recorded load'
+						? 'Your weight & reps'
 						: 'Your logged performance'
 					: 'A habit in the making.'}
 			</h2>
+			{#if weightedStrength}
+				<div class="tabs" role="group" aria-label="Chart measure">
+					{#each [['strength', 'Strength estimate'], ['load', 'Weight'], ['reps', 'Reps']] as [value, label] (value)}
+						<button
+							class:active={chartMetric === value}
+							aria-pressed={chartMetric === value}
+							onclick={() => (chartMetric = value as typeof chartMetric)}>{label}</button
+						>
+					{/each}
+				</div>
+			{/if}
 			<p class="muted">
 				{chartUnit} · {exercise
 					? 'One bar per session'
 					: 'Dates mark the start of each training week'}
 			</p>
-			{#if highlightLoad}
-				<div class="trend-legend" aria-label="Load change color legend">
-					<span class="trend-value trend-increase">↗ Higher load</span>
-					<span class="trend-value trend-steady">→ Same load</span>
-					<span class="trend-value trend-decrease">↘ Lower load</span>
+			{#if weightedStrength}
+				<div class="trend-legend" aria-label="Strength change color legend">
+					<span class="trend-value trend-increase">↗ Stronger</span>
+					<span class="trend-value trend-steady">→ Steady (±1%)</span>
+					<span class="trend-value trend-decrease">↘ Weaker</span>
 				</div>
 				<p class="field-help">
-					Compared with the previous session’s recorded load. Rep counts may differ.
+					Each bar uses the set with the highest strength estimate that session ({loadLabel(
+						exercise!
+					)}). Weight and reps always come from that same set. Colors compare the combined estimate
+					with the previous session, whichever measure you view. Full completed reps only. Estimate
+					= weight × (1 + reps ÷ 30); high-rep sets and changes in effort or technique make it less
+					certain.
 				</p>
 			{/if}
 			<div
@@ -248,11 +295,14 @@
 			>
 				{#each chart as point, i (point)}<div
 						class={`chart-column trend-${chartTrends[i].tone}`}
-						title={`${displayDate(point.date)} · ${point.label} · ${point.value ?? 'N/A'} ${chartUnit}${highlightLoad ? ' · ' + chartTrends[i].label + ' load vs. previous session' : ''}`}
+						title={`${displayDate(point.date)} · ${point.label} · ${number(point.value)} ${chartUnit}${point.set ? ' · ' + strengthSetLabel(point.set) + ' · ' + chartTrends[i].label + ' strength estimate vs. previous session' : ''}`}
 					>
 						<span class="trend-value"
-							><span aria-hidden="true">{chartTrends[i].symbol}</span> {point.value ?? '—'}</span
+							><span aria-hidden="true">{chartTrends[i].symbol}</span> {number(point.value)}</span
 						>
+						{#if point.set}<span class="set-pair"
+								>{point.set.load} kg<br />× {point.set.reps} reps</span
+							>{/if}
 						<div
 							class="chart-bar"
 							style:height={`${Math.max(3, ((point.value || 0) / max) * 140)}px`}
@@ -266,12 +316,21 @@
 			<div class="scroll-table" style="margin-top:20px">
 				<table>
 					<caption class="field-help">Accessible chart data · {chartUnit}</caption><thead
-						><tr><th>Date</th><th>Session / period</th><th>{chartUnit}</th></tr></thead
+						><tr
+							><th>Date</th><th>Session / period</th>
+							{#if weightedStrength}<th>{loadLabel(exercise!)}</th><th>Completed reps</th><th
+									>Strength estimate (kg)</th
+								><th>Strength trend</th>
+							{:else}<th>{chartUnit}</th>{/if}</tr
+						></thead
 					><tbody
-						>{#each chart as point (point)}<tr
-								><td>{displayDate(point.date)}</td><td>{point.label}</td><td
-									>{point.value ?? 'N/A'}</td
-								></tr
+						>{#each chart as point, i (point)}<tr
+								><td>{displayDate(point.date)}</td><td>{point.label}</td>
+								{#if weightedStrength}<td>{point.set?.load ?? 'N/A'}</td><td
+										>{point.set?.reps ?? 'N/A'}</td
+									><td>{number(point.set?.strength ?? null)}</td>
+									<td>{chartTrends[i].symbol} {chartTrends[i].label}</td>
+								{:else}<td>{point.value ?? 'N/A'}</td>{/if}</tr
 							>{/each}</tbody
 					>
 				</table>
@@ -373,6 +432,15 @@
 				>
 			</table>
 		</div>{/if}
+
+	<style>
+		.set-pair {
+			font-size: 11px;
+			line-height: 1.4;
+			color: var(--muted);
+			white-space: nowrap;
+		}
+	</style>
 {/if}
 {#if !exercise}<div class="section-heading"><h2>Take a closer look.</h2></div>
 	<div class="two-col">

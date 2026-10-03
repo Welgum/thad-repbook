@@ -3,9 +3,9 @@
 	import { app } from '$lib/repositories/app';
 	import { sessionsInRange } from '$lib/repositories/data';
 	import { overview } from '$lib/analytics';
-	import { progressionReport, shiftMonth, monthOf } from '$lib/analytics/progression';
+	import { progressionReport } from '$lib/analytics/progression';
 	import ProgressDashboard from '$lib/components/ProgressDashboard.svelte';
-	import { dateInZone, shiftDate } from '$lib/domain/time';
+	import { dateInZone, shiftDate, weekOf } from '$lib/domain/time';
 	import type { Session, Workout } from '$lib/domain/types';
 	import Icon from '$lib/components/Icon.svelte';
 	import WorkoutCard from '$lib/components/WorkoutCard.svelte';
@@ -18,19 +18,16 @@
 		start = $state(false),
 		selected = $state<Workout | undefined>();
 	const today = dateInZone(Date.now(), $app.profile!.timeZone);
+	const progressionStart = shiftDate(weekOf(today), -11 * 7);
 	const recentSessions = $derived(sessions.filter((s) => s.workoutDate >= shiftDate(today, -27)));
 	const stats = $derived(overview(recentSessions, $app));
 	const progression = $derived(
-		progressionReport(sessions, $app, { from: `${shiftMonth(monthOf(today), -2)}-01`, to: today })
+		progressionReport(sessions, $app, { from: progressionStart, to: today })
 	);
 	const workouts = $derived($app.workouts.filter((w) => !w.archivedAt));
 	onMount(async () => {
 		try {
-			sessions = await sessionsInRange(
-				$app.user!.uid,
-				`${shiftMonth(monthOf(today), -3)}-01`,
-				today
-			);
+			sessions = await sessionsInRange($app.user!.uid, shiftDate(progressionStart, -7), today);
 		} catch (e) {
 			error = (e as Error).message;
 		} finally {

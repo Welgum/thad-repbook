@@ -1,14 +1,8 @@
 <script lang="ts">
-	import {
-		monthLabel,
-		monthOf,
-		shiftMonth,
-		signedPercent,
-		trendLabel,
-		type ProgressionReport
-	} from '$lib/analytics/progression';
+	import { signedPercent, trendLabel, type ProgressionReport } from '$lib/analytics/progression';
+	import { strengthSetLabel } from '$lib/analytics/strength';
 	import { loadLabel } from '$lib/domain/session';
-	import { displayDate } from '$lib/domain/time';
+	import { displayDate, shiftDate, weekOf } from '$lib/domain/time';
 	import TrendChart from './TrendChart.svelte';
 	import { chartTrend } from './chart-trend';
 	import Icon from './Icon.svelte';
@@ -17,12 +11,12 @@
 		through,
 		compact = false
 	}: { report: ProgressionReport; through: string; compact?: boolean } = $props();
-	let month = $state('');
+	let week = $state('');
 	let showMethod = $state(false);
 	const selected = $derived(
-		report.months.find((m) => m.month === month) ??
-			[...report.months].reverse().find((m) => m.compared > 0) ??
-			report.months.at(-1)
+		report.weeks.find((m) => m.week === week) ??
+			[...report.weeks].reverse().find((m) => m.compared > 0) ??
+			report.weeks.at(-1)
 	);
 	const selectedTrend = $derived(chartTrend(selected?.change));
 	const rows = $derived(
@@ -30,14 +24,18 @@
 			? report.exercises
 					.map((exercise) => ({
 						exercise,
-						point: exercise.points.find((p) => p.month === selected.month)!
+						point: exercise.points.find((p) => p.week === selected.week)!
 					}))
-					.filter(({ point }) => point.load !== null)
-					.sort(
-						(a, b) =>
-							(b.point.change ?? -Infinity) - (a.point.change ?? -Infinity) ||
+					.filter(({ point }) => point.strength !== null)
+					.sort((a, b) => {
+						// Highest weekly gain first; unknown trends follow every measured result.
+						if (a.point.change === null && b.point.change !== null) return 1;
+						if (b.point.change === null && a.point.change !== null) return -1;
+						return (
+							(b.point.change ?? 0) - (a.point.change ?? 0) ||
 							a.exercise.name.localeCompare(b.exercise.name)
-					)
+						);
+					})
 			: []
 	);
 	const number = (n: number | null | undefined) =>
@@ -47,23 +45,24 @@
 <section class="progress-dashboard" aria-label="Strength progression dashboard">
 	<div class="section-heading dashboard-heading">
 		<div>
-			<span class="eyebrow">WEIGHTS TELL THE STORY</span>
+			<span class="eyebrow">EVERY REP COUNTS</span>
 			<h2>Your strength, over time.</h2>
 		</div>
-		{#if selected}<label class="month-picker"
-				>Progress month
-				<select value={selected.month} onchange={(event) => (month = event.currentTarget.value)}>
-					{#each [...report.months].reverse() as point (point.month)}<option value={point.month}
-							>{monthLabel(point.month)}{point.month === monthOf(through)
-								? ' · through ' + through.slice(8)
+		{#if selected}<label class="week-picker"
+				>Progress week
+				<select value={selected.week} onchange={(event) => (week = event.currentTarget.value)}>
+					{#each [...report.weeks].reverse() as point (point.week)}<option value={point.week}
+							>Week of {displayDate(point.week)}{point.week === weekOf(through) &&
+							through < shiftDate(point.week, 6)
+								? ' · through ' + displayDate(through)
 								: ''}</option
 						>{/each}
 				</select>
 			</label>{/if}
 	</div>
 	<p class="field-help period-note">
-		Calendar-month comparisons through {displayDate(through)}. The first month uses its full
-		history; activity totals below follow the exact date range.
+		Weeks run Monday–Sunday, through {displayDate(through)}. The first week uses its full history;
+		activity totals below follow the exact date range.
 	</p>
 	<div class="progress-grid">
 		<div class="card strength-card" data-testid="strength-index">
@@ -80,30 +79,29 @@
 					>{number(selected?.index)}</strong
 				><span class={`index-change trend-value trend-${selectedTrend.tone}`}
 					><span aria-hidden="true">{selectedTrend.symbol}</span>
-					{signedPercent(selected?.change ?? null)}<small>vs. previous month</small></span
+					{signedPercent(selected?.change ?? null)}<small>vs. previous week</small></span
 				>
 			</div>
 			<p class="muted">
-				100 = previous month · {selected?.compared ?? 0} comparable {selected?.compared === 1
+				100 = previous week · {selected?.compared ?? 0} comparable {selected?.compared === 1
 					? 'exercise'
 					: 'exercises'}
 			</p>
 			<TrendChart
-				points={report.months.map((m) => ({ date: m.month, value: m.change }))}
-				label="Monthly strength change"
+				points={report.weeks.map((m) => ({ date: m.week, value: m.change }))}
+				label="Weekly strength change"
 				baseline={0}
 			/>
 			<p class="field-help">
-				Monthly change in comparable lifting weights. Dashed line = no change. Each exercise counts
-				equally.
+				Weight and completed reps both count. Dashed line = no change. Each exercise counts equally.
 			</p>
 		</div>
 		<div class="insight-stack">
 			<div class="card fastest-card" data-testid="fastest-exercise">
 				<span class="eyebrow"
 					>FASTEST PROGRESSION · {selected
-						? monthLabel(selected.month).toUpperCase()
-						: 'THIS MONTH'}</span
+						? 'WEEK OF ' + displayDate(selected.week).toUpperCase()
+						: 'THIS WEEK'}</span
 				>
 				{#if selected?.fastest}
 					<h3>
@@ -116,13 +114,13 @@
 					<div class="gain-value trend-value trend-increase">
 						{signedPercent(selected.fastest.change)}
 					</div>
-					<p>Largest comparable weight increase this month.</p>
+					<p>Largest estimated strength increase this week, accounting for weight and reps.</p>
 				{:else}
 					<h3>{selected?.compared ? 'No clear increase yet.' : 'A little more history.'}</h3>
 					<p>
 						{selected?.compared
-							? 'No exercise is up more than 1% against the previous month.'
-							: 'Log matching rep counts across at least two weeks in each month to compare your lifts.'}
+							? 'No exercise is up more than 1% against the previous week.'
+							: 'Log this exercise in two consecutive weeks to compare weight and reps.'}
 					</p>
 				{/if}
 			</div>
@@ -152,15 +150,17 @@
 			onclick={() => (showMethod = !showMethod)}>How is this kept stable?</button
 		>
 		{#if showMethod}<p class="field-help">
-				For each exercise and completed rep count, we take the best positive external load per day,
-				then the median for each calendar week and the median of those weeks. A comparison needs
-				logs at least seven days apart in both months. We combine matched rep-count changes using
-				their median log ratio, then give each exercise equal weight in the overall index. Sets,
-				workout totals, and volume do not add points. Full completed reps are used; failed half-rep
-				markers do not raise the score. Bodyweight, assistance, holds, and cardio keep their own
-				performance charts. Missing months stay blank. The index resets its reference to 100 each
-				month, so read the chart as monthly change, not cumulative gain. The exercise mix can vary;
-				the comparison count shows coverage.
+				Each set gets a strength estimate: weight × (1 + completed reps ÷ 30). More reps at the same
+				weight raise it. A heavier set with fewer reps can score higher, lower, or about the same:
+				50 kg × 10 and 55 kg × 6 are within 1%; 55 kg × 8 is about 4.5% higher than 50 kg × 10. We
+				take each day's best estimate, then the weekly median, and combine weekly ratios with equal
+				weight per exercise. Sets, workout totals, and volume do not add points. Both adjacent weeks
+				need a result using the same exercise and weight convention. Missing weeks stay blank. Full
+				completed reps count; failed half-rep markers do not. Bodyweight, assistance, holds, and
+				cardio keep their own charts. This Epley-style score is an estimate, not a measured maximum;
+				high-rep sets and changes in effort or technique make comparisons less certain. The index
+				uses 100 for the previous week, so changes are weekly, not cumulative. The exercise mix can
+				vary; the comparison count shows coverage.
 			</p>{/if}
 	</div>
 	{#if compact}
@@ -172,16 +172,17 @@
 			<h3>Progression by exercise</h3>
 			<p class="muted">
 				{selected
-					? `${monthLabel(selected.month)} vs. ${monthLabel(shiftMonth(selected.month, -1))}`
-					: 'Monthly comparison'} · ranked by comparable weight change
+					? `Week of ${displayDate(selected.week)} vs. ${displayDate(shiftDate(selected.week, -7))}`
+					: 'Weekly comparison'} · largest weekly gains first
 			</p>
 			{#if rows.length}
 				<div class="scroll-table">
 					<table>
 						<thead
 							><tr
-								><th>Exercise</th><th>Load trend</th><th>Typical top load</th><th>Monthly change</th
-								><th>Compared reps</th></tr
+								><th>Exercise</th><th>Strength trend</th><th>Typical strength</th><th
+									aria-sort="descending">Weekly change <span aria-hidden="true">↓</span></th
+								><th>Weight × reps</th></tr
 							></thead
 						>
 						<tbody
@@ -196,12 +197,19 @@
 									<td
 										><TrendChart
 											compact
-											points={exercise.points.map((p) => ({ date: p.month, value: p.load }))}
-											label={`${exercise.name}: monthly typical top load in ${loadLabel(exercise)}`}
-											unit="kg"
+											points={exercise.points.map((p) => ({
+												date: p.week,
+												value: p.strength,
+												change: p.change,
+												detail: p.referenceSets
+													.map((set) => `${strengthSetLabel(set)} on ${displayDate(set.date)}`)
+													.join('; ')
+											}))}
+											label={`${exercise.name}: weekly strength estimate from weight and reps (${loadLabel(exercise)})`}
+											unit="est. kg"
 										/></td
 									>
-									<td>{number(point.load)} kg</td>
+									<td>{number(point.strength)}<small>estimated kg</small></td>
 									<td
 										><span class={`badge trend-badge trend-${trend.tone}`}
 											><span aria-hidden="true">{trend.symbol}</span>{signedPercent(
@@ -209,28 +217,28 @@
 											)}</span
 										><small>{trendLabel(point.change)}</small></td
 									>
-									<td
-										>{point.matchedReps.length
-											? point.matchedReps.join(', ')
-											: 'Not enough matching history'}</td
-									></tr
+									<td class="reference-sets">
+										{#each point.referenceSets as set (set.date)}
+											<div>{strengthSetLabel(set)}<small>{displayDate(set.date)}</small></div>
+										{/each}
+									</td></tr
 								>
 							{/each}</tbody
 						>
 					</table>
 				</div>
-				<div class="trend-legend" aria-label="Load trend color legend">
-					<span class="trend-value trend-increase">↗ Higher load</span>
-					<span class="trend-value trend-steady">→ Same load</span>
-					<span class="trend-value trend-decrease">↘ Lower load</span>
+				<div class="trend-legend" aria-label="Strength trend color legend">
+					<span class="trend-value trend-increase">↗ Stronger</span>
+					<span class="trend-value trend-steady">→ Steady (±1%)</span>
+					<span class="trend-value trend-decrease">↘ Weaker</span>
 				</div>
 				<p class="field-help">
-					Load trend colors compare adjacent months. Load trends show weekly-smoothed top weights
-					across all rep counts. Monthly changes compare only matching rep counts and weight
-					conventions. Positive external loads only.
+					Strength trends account for both weight and reps. Weight × reps shows the real set(s) at
+					the middle of each week's daily best estimates; with two middle sets, their estimates are
+					averaged. Positive external loads only. Estimates are less certain with high reps.
 				</p>
 			{:else}<p class="muted">
-					No included external-weight sets in this month. Choose another month or log a weighted
+					No included external-weight sets in this week. Choose another week or log a weighted
 					exercise.
 				</p>{/if}
 		</div>
@@ -249,7 +257,7 @@
 	.dashboard-heading h2 {
 		margin-top: 8px;
 	}
-	.month-picker {
+	.week-picker {
 		min-width: 190px;
 	}
 	.period-note {
@@ -349,6 +357,12 @@
 	.exercise-progression {
 		min-width: 0;
 	}
+	.reference-sets {
+		white-space: nowrap;
+	}
+	.reference-sets div + div {
+		margin-top: 8px;
+	}
 	@media (max-width: 850px) {
 		.progress-grid {
 			grid-template-columns: 1fr;
@@ -364,7 +378,7 @@
 		.index-value {
 			font-size: 48px;
 		}
-		.month-picker {
+		.week-picker {
 			width: 100%;
 		}
 	}

@@ -1,4 +1,4 @@
-/** Presentation only: callers choose whether change means a monthly percentage or a raw delta. */
+/** Presentation only: callers choose whether change means a weekly percentage or a raw delta. */
 export function chartTrend(change: number | null | undefined, tolerance = 1) {
 	if (change == null || !Number.isFinite(change))
 		return { tone: 'unavailable', symbol: '', label: 'No comparison' } as const;

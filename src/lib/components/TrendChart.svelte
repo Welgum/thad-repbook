@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { monthLabel } from '$lib/analytics/progression';
+	import { displayDate } from '$lib/domain/time';
 	import { chartTrend } from './chart-trend';
 	let {
 		points,
@@ -8,7 +8,7 @@
 		baseline,
 		compact = false
 	}: {
-		points: { date: string; value: number | null }[];
+		points: { date: string; value: number | null; detail?: string; change?: number | null }[];
 		label: string;
 		unit?: string;
 		baseline?: number;
@@ -22,9 +22,10 @@
 	const x = (i: number) => (points.length === 1 ? 320 : 55 + (i / (points.length - 1)) * 545);
 	const y = (value: number) => 155 - ((value - low + padding) / (high - low + padding * 2)) * 125;
 	// Percentage charts encode change from their baseline, not change in the rate of growth.
-	// Load charts encode direction against the adjacent month and never bridge missing data.
+	// Strength charts supply their weekly percentage to share the dashboard's ±1% threshold.
 	const pointTrends = $derived(
 		points.map((point, i) => {
+			if (point.change !== undefined) return chartTrend(point.change);
 			const previous = points[i - 1]?.value;
 			const reference = baseline ?? previous;
 			return chartTrend(
@@ -33,13 +34,21 @@
 			);
 		})
 	);
+	// Evenly spaced ticks avoid squeezing adjacent week labels together on mobile.
+	const dateTicks = $derived(
+		new Set(
+			Array.from({ length: Math.min(4, points.length) }, (_, i) =>
+				Math.round((i * (points.length - 1)) / Math.max(1, Math.min(4, points.length) - 1))
+			)
+		)
+	);
 	const format = (value: number) => `${Number(value.toFixed(1))}${unit === '%' ? '%' : ` ${unit}`}`;
 </script>
 
 {#if values.length}
 	<svg
 		class:compact
-		viewBox={compact ? '40 15 575 155' : '0 0 640 195'}
+		viewBox={compact ? '40 15 575 155' : '0 0 640 210'}
 		role="img"
 		aria-label={label}
 	>
@@ -76,24 +85,32 @@
 					r={compact ? 7 : 6}
 				>
 					<title
-						>{monthLabel(point.date)}: {format(point.value)} · {trend.symbol}
-						{trend.label}{baseline !== undefined
-							? ' vs. previous month'
-							: ' load vs. previous month'}</title
+						>{displayDate(point.date)}: {format(point.value)} · {trend.symbol}
+						{trend.label} vs. previous week{point.detail ? ' · ' + point.detail : ''}</title
 					>
 				</circle>
 			{/if}
-			{#if !compact && (i === 0 || i === points.length - 1 || i % Math.max(1, Math.ceil(points.length / 4)) === 0)}
-				<text x={x(i)} y="185" text-anchor="middle">{monthLabel(point.date)}</text>
+			{#if !compact && dateTicks.has(i)}
+				<text x={x(i)} y="185" text-anchor="middle"
+					><tspan x={x(i)}>{displayDate(point.date).split(', ')[0]}</tspan><tspan x={x(i)} dy="15"
+						>{point.date.slice(0, 4)}</tspan
+					></text
+				>
 			{/if}
 		{/each}
 	</svg>
 	{#if compact}
 		<div class="compact-dates" class:single={points.length === 1}>
-			<time datetime={`${points[0].date}-01`}>{monthLabel(points[0].date)}</time>
+			<time datetime={points[0].date}
+				><span>{displayDate(points[0].date).split(', ')[0]}</span><span
+					>{points[0].date.slice(0, 4)}</span
+				></time
+			>
 			{#if points.length > 1}
-				<time datetime={`${points[points.length - 1].date}-01`}
-					>{monthLabel(points[points.length - 1].date)}</time
+				<time datetime={points[points.length - 1].date}
+					><span>{displayDate(points[points.length - 1].date).split(', ')[0]}</span><span
+						>{points[points.length - 1].date.slice(0, 4)}</span
+					></time
 				>
 			{/if}
 		</div>
@@ -112,10 +129,12 @@
 			<div class="scroll-table">
 				<table>
 					<caption>{label}</caption>
-					<thead><tr><th>Month</th><th>{unit}</th><th>Change vs. previous month</th></tr></thead>
+					<thead
+						><tr><th>Week starting</th><th>{unit}</th><th>Change vs. previous week</th></tr></thead
+					>
 					<tbody
 						>{#each points as point, i (point.date)}<tr
-								><td>{monthLabel(point.date)}</td><td
+								><td>{displayDate(point.date)}</td><td
 									>{point.value === null ? 'Not enough comparable data' : format(point.value)}</td
 								><td class={`trend-value trend-${pointTrends[i].tone}`}
 									>{pointTrends[i].symbol} {pointTrends[i].label}</td
@@ -128,7 +147,7 @@
 	{/if}
 {:else}
 	<p class="chart-empty">
-		{compact ? 'No load history' : 'Your trend will appear after two comparable months.'}
+		{compact ? 'No strength history' : 'Your trend will appear after two comparable weeks.'}
 	</p>
 {/if}
 
@@ -172,6 +191,16 @@
 		font-size: 10px;
 		color: var(--muted);
 		white-space: nowrap;
+	}
+	.compact-dates time {
+		display: grid;
+		gap: 2px;
+	}
+	.compact-dates time:last-child {
+		text-align: right;
+	}
+	.compact-dates.single time {
+		text-align: center;
 	}
 	.compact-dates.single {
 		justify-content: center;
