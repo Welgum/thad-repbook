@@ -1,0 +1,19 @@
+Create a workout-template import file for Workout Tracker.
+Return only valid JSON, with no Markdown fences or comments.
+Use schemaVersion 1 and units "kg". Use English workout and exercise names.
+The root contains exercises and workouts. Each exercise has a unique key,
+name, kind, loadMode and weightConvention. Each workout has a unique key,
+name and ordered items. Each item has a unique itemKey within that workout,
+an exerciseKey referencing the exercises array, a target and restSeconds.
+Use the target shape for the exercise kind:
+strength: sets, repsMin, repsMax;
+isometric: rounds, directions, holdSecondsMin, holdSecondsMax;
+duration: durationSeconds.
+All durations and rest values are seconds. restSeconds 0 means no rest timer.
+For dumbbells, use per_dumbbell and specify the weight of one dumbbell.
+For pull-ups, use bodyweight/bodyweight_adjustment: 0 is bodyweight,
+positive is added load, negative is assistance.
+Omit defaultWeightKg unless a load was explicitly provided for the program.
+Do not create performed sessions, user IDs, authentication data or extra fields.
+Reuse one exercise key when the same movement with the same load convention
+appears in several workouts. Follow the attached schema, limits and example.

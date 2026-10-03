@@ -1,0 +1,63 @@
+{
+	"indexes": [
+		{
+			"collectionGroup": "sessions",
+			"queryScope": "COLLECTION",
+			"fields": [
+				{
+					"fieldPath": "templateId",
+					"order": "ASCENDING"
+				},
+				{
+					"fieldPath": "workoutDate",
+					"order": "DESCENDING"
+				},
+				{
+					"fieldPath": "__name__",
+					"order": "DESCENDING"
+				}
+			]
+		},
+		{
+			"collectionGroup": "sessions",
+			"queryScope": "COLLECTION",
+			"fields": [
+				{
+					"fieldPath": "status",
+					"order": "ASCENDING"
+				},
+				{
+					"fieldPath": "workoutDate",
+					"order": "DESCENDING"
+				},
+				{
+					"fieldPath": "__name__",
+					"order": "DESCENDING"
+				}
+			]
+		},
+		{
+			"collectionGroup": "sessions",
+			"queryScope": "COLLECTION",
+			"fields": [
+				{
+					"fieldPath": "templateId",
+					"order": "ASCENDING"
+				},
+				{
+					"fieldPath": "status",
+					"order": "ASCENDING"
+				},
+				{
+					"fieldPath": "workoutDate",
+					"order": "DESCENDING"
+				},
+				{
+					"fieldPath": "__name__",
+					"order": "DESCENDING"
+				}
+			]
+		}
+	],
+	"fieldOverrides": []
+}

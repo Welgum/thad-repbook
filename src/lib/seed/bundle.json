@@ -1,0 +1,437 @@
+{
+  "schemaVersion": 1,
+  "units": "kg",
+  "exercises": [
+    {
+      "key": "deadlift",
+      "name": "Deadlift",
+      "kind": "strength",
+      "loadMode": "external",
+      "weightConvention": "total",
+      "notes": "Leave 2–3 reps in reserve."
+    },
+    {
+      "key": "leg-curl",
+      "name": "Leg Curl",
+      "kind": "strength",
+      "loadMode": "external",
+      "weightConvention": "machine_stack",
+      "notes": "Single-leg variation: handwritten source note."
+    },
+    {
+      "key": "dumbbell-lateral-raise",
+      "name": "Dumbbell Lateral Raise",
+      "kind": "strength",
+      "loadMode": "external",
+      "weightConvention": "per_dumbbell"
+    },
+    {
+      "key": "calf-raise",
+      "name": "Calf Raise",
+      "kind": "strength",
+      "loadMode": "external",
+      "weightConvention": "as_logged",
+      "notes": "Equipment unspecified in source. Keep the load convention consistent."
+    },
+    {
+      "key": "neck-isometrics",
+      "name": "Neck Isometrics",
+      "kind": "isometric",
+      "loadMode": "none",
+      "weightConvention": "none",
+      "notes": "Four directions; rest between rounds."
+    },
+    {
+      "key": "barbell-bench-press",
+      "name": "Barbell Bench Press",
+      "kind": "strength",
+      "loadMode": "external",
+      "weightConvention": "total"
+    },
+    {
+      "key": "seated-dumbbell-shoulder-press",
+      "name": "Seated Dumbbell Shoulder Press",
+      "kind": "strength",
+      "loadMode": "external",
+      "weightConvention": "per_dumbbell"
+    },
+    {
+      "key": "french-press",
+      "name": "French Press (Triceps Extension)",
+      "kind": "strength",
+      "loadMode": "external",
+      "weightConvention": "as_logged",
+      "notes": "Equipment and body position unspecified in source."
+    },
+    {
+      "key": "cable-triceps-pushdown",
+      "name": "Cable Triceps Pushdown",
+      "kind": "strength",
+      "loadMode": "external",
+      "weightConvention": "machine_stack"
+    },
+    {
+      "key": "rope-cable-crunch",
+      "name": "Rope Cable Crunch",
+      "kind": "strength",
+      "loadMode": "external",
+      "weightConvention": "machine_stack"
+    },
+    {
+      "key": "pull-up",
+      "name": "Pull-up",
+      "kind": "strength",
+      "loadMode": "bodyweight",
+      "weightConvention": "bodyweight_adjustment",
+      "notes": "0 = bodyweight; positive = added load; negative = assistance."
+    },
+    {
+      "key": "chest-supported-row",
+      "name": "Chest-Supported Row",
+      "kind": "strength",
+      "loadMode": "external",
+      "weightConvention": "as_logged",
+      "notes": "Equipment unspecified in source. Keep the load convention consistent."
+    },
+    {
+      "key": "hammer-curl",
+      "name": "Hammer Curl",
+      "kind": "strength",
+      "loadMode": "external",
+      "weightConvention": "per_dumbbell"
+    },
+    {
+      "key": "incline-dumbbell-curl",
+      "name": "Incline Dumbbell Curl",
+      "kind": "strength",
+      "loadMode": "external",
+      "weightConvention": "per_dumbbell"
+    },
+    {
+      "key": "reverse-pec-deck",
+      "name": "Reverse Pec Deck",
+      "kind": "strength",
+      "loadMode": "external",
+      "weightConvention": "machine_stack"
+    }
+  ],
+  "workouts": [
+    {
+      "key": "monday-lower-shoulders",
+      "name": "Monday — Lower Body & Shoulders",
+      "notes": "Source plan: approximately 50 minutes. Rest times are guidelines. Leave 1–3 reps in reserve unless otherwise noted. Can be performed on any day.",
+      "items": [
+        {
+          "itemKey": "deadlift",
+          "exerciseKey": "deadlift",
+          "target": {
+            "sets": 3,
+            "repsMin": 5,
+            "repsMax": 6
+          },
+          "restSeconds": 180
+        },
+        {
+          "itemKey": "leg-curl",
+          "exerciseKey": "leg-curl",
+          "target": {
+            "sets": 2,
+            "repsMin": 10,
+            "repsMax": 15
+          },
+          "restSeconds": 90
+        },
+        {
+          "itemKey": "dumbbell-lateral-raise",
+          "exerciseKey": "dumbbell-lateral-raise",
+          "target": {
+            "sets": 4,
+            "repsMin": 12,
+            "repsMax": 20
+          },
+          "restSeconds": 60
+        },
+        {
+          "itemKey": "calf-raise",
+          "exerciseKey": "calf-raise",
+          "target": {
+            "sets": 2,
+            "repsMin": 10,
+            "repsMax": 15
+          },
+          "restSeconds": 60
+        },
+        {
+          "itemKey": "neck-isometrics",
+          "exerciseKey": "neck-isometrics",
+          "target": {
+            "rounds": 2,
+            "directions": [
+              "Front",
+              "Back",
+              "Left",
+              "Right"
+            ],
+            "holdSecondsMin": 5,
+            "holdSecondsMax": 10
+          },
+          "restSeconds": 30
+        }
+      ]
+    },
+    {
+      "key": "tuesday-push-core",
+      "name": "Tuesday — Push & Core",
+      "notes": "Source plan: approximately 50 minutes. Rest times are guidelines. Leave 1–3 reps in reserve unless otherwise noted. Can be performed on any day.",
+      "items": [
+        {
+          "itemKey": "barbell-bench-press",
+          "exerciseKey": "barbell-bench-press",
+          "target": {
+            "sets": 3,
+            "repsMin": 6,
+            "repsMax": 10
+          },
+          "restSeconds": 180
+        },
+        {
+          "itemKey": "seated-dumbbell-shoulder-press",
+          "exerciseKey": "seated-dumbbell-shoulder-press",
+          "target": {
+            "sets": 2,
+            "repsMin": 6,
+            "repsMax": 10
+          },
+          "restSeconds": 120
+        },
+        {
+          "itemKey": "french-press",
+          "exerciseKey": "french-press",
+          "target": {
+            "sets": 3,
+            "repsMin": 10,
+            "repsMax": 15
+          },
+          "restSeconds": 90
+        },
+        {
+          "itemKey": "cable-triceps-pushdown",
+          "exerciseKey": "cable-triceps-pushdown",
+          "target": {
+            "sets": 2,
+            "repsMin": 10,
+            "repsMax": 15
+          },
+          "restSeconds": 90
+        },
+        {
+          "itemKey": "rope-cable-crunch",
+          "exerciseKey": "rope-cable-crunch",
+          "target": {
+            "sets": 3,
+            "repsMin": 10,
+            "repsMax": 15
+          },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "key": "wednesday-pull-shoulders",
+      "name": "Wednesday — Pull & Shoulders",
+      "notes": "Source plan: approximately 50 minutes. Rest times are guidelines. Leave 1–3 reps in reserve unless otherwise noted. Can be performed on any day.",
+      "items": [
+        {
+          "itemKey": "pull-up",
+          "exerciseKey": "pull-up",
+          "target": {
+            "sets": 3,
+            "repsMin": 6,
+            "repsMax": 10
+          },
+          "restSeconds": 120
+        },
+        {
+          "itemKey": "chest-supported-row",
+          "exerciseKey": "chest-supported-row",
+          "target": {
+            "sets": 3,
+            "repsMin": 8,
+            "repsMax": 12
+          },
+          "restSeconds": 120
+        },
+        {
+          "itemKey": "hammer-curl",
+          "exerciseKey": "hammer-curl",
+          "target": {
+            "sets": 2,
+            "repsMin": 10,
+            "repsMax": 15
+          },
+          "restSeconds": 90
+        },
+        {
+          "itemKey": "incline-dumbbell-curl",
+          "exerciseKey": "incline-dumbbell-curl",
+          "target": {
+            "sets": 3,
+            "repsMin": 8,
+            "repsMax": 12
+          },
+          "restSeconds": 90
+        },
+        {
+          "itemKey": "reverse-pec-deck",
+          "exerciseKey": "reverse-pec-deck",
+          "target": {
+            "sets": 3,
+            "repsMin": 12,
+            "repsMax": 20
+          },
+          "restSeconds": 60
+        },
+        {
+          "itemKey": "dumbbell-lateral-raise",
+          "exerciseKey": "dumbbell-lateral-raise",
+          "target": {
+            "sets": 2,
+            "repsMin": 15,
+            "repsMax": 20
+          },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "key": "friday-pull-neck",
+      "name": "Friday — Pull & Neck",
+      "notes": "Source plan: approximately 50 minutes. Rest times are guidelines. Leave 1–3 reps in reserve unless otherwise noted. Can be performed on any day.",
+      "items": [
+        {
+          "itemKey": "pull-up",
+          "exerciseKey": "pull-up",
+          "target": {
+            "sets": 2,
+            "repsMin": 6,
+            "repsMax": 10
+          },
+          "restSeconds": 120
+        },
+        {
+          "itemKey": "chest-supported-row",
+          "exerciseKey": "chest-supported-row",
+          "target": {
+            "sets": 2,
+            "repsMin": 8,
+            "repsMax": 12
+          },
+          "restSeconds": 120
+        },
+        {
+          "itemKey": "hammer-curl",
+          "exerciseKey": "hammer-curl",
+          "target": {
+            "sets": 2,
+            "repsMin": 10,
+            "repsMax": 15
+          },
+          "restSeconds": 90
+        },
+        {
+          "itemKey": "incline-dumbbell-curl",
+          "exerciseKey": "incline-dumbbell-curl",
+          "target": {
+            "sets": 3,
+            "repsMin": 8,
+            "repsMax": 12
+          },
+          "restSeconds": 90
+        },
+        {
+          "itemKey": "reverse-pec-deck",
+          "exerciseKey": "reverse-pec-deck",
+          "target": {
+            "sets": 3,
+            "repsMin": 12,
+            "repsMax": 20
+          },
+          "restSeconds": 60
+        },
+        {
+          "itemKey": "neck-isometrics",
+          "exerciseKey": "neck-isometrics",
+          "target": {
+            "rounds": 2,
+            "directions": [
+              "Front",
+              "Back",
+              "Left",
+              "Right"
+            ],
+            "holdSecondsMin": 5,
+            "holdSecondsMax": 10
+          },
+          "restSeconds": 30
+        }
+      ]
+    },
+    {
+      "key": "saturday-push-shoulders",
+      "name": "Saturday — Push & Shoulders",
+      "notes": "Source plan: approximately 50 minutes. Rest times are guidelines. Leave 1–3 reps in reserve unless otherwise noted. Can be performed on any day.",
+      "items": [
+        {
+          "itemKey": "barbell-bench-press",
+          "exerciseKey": "barbell-bench-press",
+          "target": {
+            "sets": 3,
+            "repsMin": 6,
+            "repsMax": 10
+          },
+          "restSeconds": 180
+        },
+        {
+          "itemKey": "seated-dumbbell-shoulder-press",
+          "exerciseKey": "seated-dumbbell-shoulder-press",
+          "target": {
+            "sets": 2,
+            "repsMin": 6,
+            "repsMax": 10
+          },
+          "restSeconds": 120
+        },
+        {
+          "itemKey": "dumbbell-lateral-raise",
+          "exerciseKey": "dumbbell-lateral-raise",
+          "target": {
+            "sets": 4,
+            "repsMin": 12,
+            "repsMax": 20
+          },
+          "restSeconds": 60
+        },
+        {
+          "itemKey": "french-press",
+          "exerciseKey": "french-press",
+          "target": {
+            "sets": 3,
+            "repsMin": 10,
+            "repsMax": 15
+          },
+          "restSeconds": 90
+        },
+        {
+          "itemKey": "cable-triceps-pushdown",
+          "exerciseKey": "cable-triceps-pushdown",
+          "target": {
+            "sets": 2,
+            "repsMin": 10,
+            "repsMax": 15
+          },
+          "restSeconds": 90
+        }
+      ]
+    }
+  ]
+}

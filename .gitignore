@@ -1,0 +1,13 @@
+node_modules/
+.svelte-kit/
+.vercel/
+build/
+.env
+.env.*
+!.env.example
+.DS_Store
+*-debug.log
+playwright-report/
+test-results/
+.firebase/
+thad-images/

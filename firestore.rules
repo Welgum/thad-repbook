@@ -1,0 +1,85 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function owner(uid) { return request.auth != null && request.auth.uid == uid; }
+    function text(v, max) { return v is string && v.size() <= max; }
+    function name(v) { return text(v,120) && v.size() > 0; }
+    function number(v, low, high) { return v is number && v >= low && v <= high; }
+    function integer(v, low, high) { return v is int && v >= low && v <= high; }
+    function nullableTime(v) { return v == null || number(v,0,9999999999999); }
+    function audit(d) { return d.updatedAt == request.time; }
+    function exclusion(d) { return d.excludedFromStats is bool && (!('exclusionReason' in d) || text(d.exclusionReason,2000)); }
+    function definition(d) {
+      return name(d.name) && d.key is string && d.key.matches('^[a-z0-9][a-z0-9-]{0,63}$')
+        && (!('notes' in d) || text(d.notes,2000))
+        && (d.kind in ['isometric','duration'] ? d.loadMode == 'none' && d.weightConvention == 'none' :
+            d.kind == 'strength' && (d.loadMode == 'external' ? d.weightConvention in ['total','per_dumbbell','machine_stack','as_logged'] :
+            d.loadMode == 'bodyweight' ? d.weightConvention == 'bodyweight_adjustment' : d.loadMode == 'none' && d.weightConvention == 'none'));
+    }
+    match /users/{uid} {
+      allow read: if owner(uid);
+      allow create: if owner(uid) && profile(request.resource.data) && request.resource.data.createdAt == request.time && request.resource.data.seedVersion == 1;
+      allow update: if owner(uid) && profile(request.resource.data) && request.resource.data.createdAt == resource.data.createdAt && request.resource.data.seedVersion == resource.data.seedVersion;
+      function profile(d) { return d.keys().hasOnly(['displayName','email','timeZone','units','seedVersion','activeSessionId','settings','createdAt','updatedAt'])
+        && name(d.displayName) && text(d.email,320) && name(d.timeZone) && d.units == 'kg' && d.seedVersion == 1
+        && (d.activeSessionId == null || name(d.activeSessionId)) && d.settings.keys().hasOnly(['weightStep']) && number(d.settings.weightStep,0.01,100) && audit(d); }
+      match /exercises/{exerciseId} {
+        allow read: if owner(uid);
+        allow create: if owner(uid) && exercise(request.resource.data) && request.resource.data.id == exerciseId && request.resource.data.createdAt == request.time;
+        allow update: if owner(uid) && exercise(request.resource.data) && request.resource.data.id == resource.data.id && request.resource.data.key == resource.data.key
+          && request.resource.data.kind == resource.data.kind && request.resource.data.loadMode == resource.data.loadMode && request.resource.data.weightConvention == resource.data.weightConvention && request.resource.data.createdAt == resource.data.createdAt;
+        function exercise(d) { return d.keys().hasOnly(['id','key','name','kind','loadMode','weightConvention','notes','archivedAt','excludedFromStats','exclusionReason','createdAt','updatedAt']) && definition(d) && nullableTime(d.archivedAt) && exclusion(d) && audit(d); }
+      }
+      match /workouts/{workoutId} {
+        allow read: if owner(uid);
+        allow create: if owner(uid) && workout(request.resource.data) && request.resource.data.id == workoutId && request.resource.data.version == 1 && request.resource.data.createdAt == request.time;
+        allow update: if owner(uid) && workout(request.resource.data) && request.resource.data.id == resource.data.id && request.resource.data.key == resource.data.key
+          && request.resource.data.createdAt == resource.data.createdAt && request.resource.data.version == resource.data.version + 1;
+        function workout(d) { return d.keys().hasOnly(['id','key','name','notes','version','items','archivedAt','excludedFromStats','exclusionReason','createdAt','updatedAt']) && name(d.name) && text(d.notes,2000)
+          && d.key is string && d.key.matches('^[a-z0-9][a-z0-9-]{0,63}$') && integer(d.version,1,1000000) && d.items is list && d.items.size() >= 1 && d.items.size() <= 40 && nullableTime(d.archivedAt) && exclusion(d) && audit(d); }
+      }
+      match /sessions/{sessionId} {
+        allow read: if owner(uid);
+        allow create: if owner(uid) && session(request.resource.data) && request.resource.data.id == sessionId && request.resource.data.revision == 0 && request.resource.data.status == 'in_progress' && request.resource.data.createdAt == request.time;
+        allow update: if owner(uid) && session(request.resource.data) && request.resource.data.id == resource.data.id
+          && request.resource.data.templateId == resource.data.templateId && request.resource.data.templateVersion == resource.data.templateVersion
+          && request.resource.data.startedAt == resource.data.startedAt && request.resource.data.timeZoneAtStart == resource.data.timeZoneAtStart
+          && request.resource.data.entryMode == resource.data.entryMode && request.resource.data.nameSnapshot == resource.data.nameSnapshot
+          && request.resource.data.createdAt == resource.data.createdAt && request.resource.data.revision == resource.data.revision + 1 && request.resource.data.exercises == resource.data.exercises && request.resource.data.exerciseStates.keys().hasOnly(resource.data.exerciseStates.keys());
+        function session(d) { return d.keys().hasOnly(['id','templateId','templateVersion','nameSnapshot','workoutDate','timeZoneAtStart','status','entryMode','startedAt','finishedAt','durationSeconds','notes','timerState','revision','deletedAt','editorId','lastOperationId','exercises','exerciseStates','excludedFromStats','exclusionReason','createdAt','updatedAt'])
+          && name(d.templateId) && integer(d.templateVersion,1,1000000) && name(d.nameSnapshot) && d.workoutDate is string && d.workoutDate.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+          && name(d.timeZoneAtStart) && d.status in ['in_progress','completed','abandoned'] && d.entryMode in ['live','retrospective']
+          && number(d.startedAt,0,9999999999999) && nullableTime(d.finishedAt) && (d.durationSeconds == null || number(d.durationSeconds,0,31536000))
+          && text(d.notes,2000) && (d.timerState == null || (d.timerState is map && number(d.timerState.deadlineAt,0,9999999999999) && number(d.timerState.startedAt,0,9999999999999) && number(d.timerState.durationSeconds,1,86400) && name(d.timerState.recordId)))
+          && integer(d.revision,0,10000000) && nullableTime(d.deletedAt) && name(d.editorId) && text(d.lastOperationId,120)
+          && d.exerciseStates is map && d.exerciseStates.size() == d.exercises.size() && d.exercises is list && d.exercises.size() >= 1 && d.exercises.size() <= 40 && exclusion(d) && audit(d); }
+        match /records/{recordId} {
+          allow read: if owner(uid);
+          allow create: if owner(uid) && record(request.resource.data) && request.resource.data.id == recordId;
+          allow update: if owner(uid) && record(request.resource.data) && request.resource.data.id == resource.data.id
+            && request.resource.data.sessionExerciseOrder == resource.data.sessionExerciseOrder && request.resource.data.sessionExerciseId == resource.data.sessionExerciseId && request.resource.data.kind == resource.data.kind
+            && request.resource.data.plannedUnitIndex == resource.data.plannedUnitIndex && request.resource.data.isExtra == resource.data.isExtra
+            && request.resource.data.revision > resource.data.revision;
+          function holdAt(m, keys, i) { return keys.size() <= i || integer(m[keys[i]],0,600); }
+          function record(d) { let parent = get(/databases/$(database)/documents/users/$(uid)/sessions/$(sessionId)).data; let item = parent.exercises[d.sessionExerciseOrder]; return exists(/databases/$(database)/documents/users/$(uid)/sessions/$(sessionId))
+            && d.keys().hasOnly(['id','sessionExerciseId','sessionExerciseOrder','kind','plannedUnitIndex','isExtra','status','reps','weightKg','holds','durationSeconds','distanceKm','notes','loggedAtClient','syncedAtServer','revision','operationId','deletedAt'])
+            && integer(d.sessionExerciseOrder,0,39) && d.sessionExerciseId == item.id && d.kind == item.exerciseSnapshot.kind && name(d.sessionExerciseId) && d.kind in ['strength','isometric','duration'] && d.isExtra is bool
+            && (d.plannedUnitIndex == null ? d.isExtra : integer(d.plannedUnitIndex,0,29) && d.plannedUnitIndex < (d.kind == 'strength' ? item.targetSnapshot.sets : d.kind == 'isometric' ? item.targetSnapshot.rounds : 1) && !d.isExtra)
+            && d.status in ['logged','failed','skipped'] && (!('notes' in d) || text(d.notes,2000))
+            && number(d.loggedAtClient,0,9999999999999) && d.syncedAtServer == request.time && integer(d.revision,1,10000000) && name(d.operationId) && nullableTime(d.deletedAt)
+            && (d.status == 'skipped' ? !d.keys().hasAny(['reps','weightKg','holds','durationSeconds','distanceKm']) :
+                d.kind == 'strength' ? integer(d.reps,0,1000) && (d.reps == 0 ? d.status == 'failed' : d.status == 'logged') && (item.exerciseSnapshot.loadMode == 'none' ? !('weightKg' in d) : number(d.weightKg, item.exerciseSnapshot.loadMode == 'external' ? 0 : -2000,2000)) && !d.keys().hasAny(['holds','durationSeconds','distanceKm']) :
+                d.kind == 'isometric' ? d.status == 'logged' && d.holds is map && d.holds.size() >= 1 && d.holds.size() <= 8 && d.holds.keys().hasAll(item.targetSnapshot.directions) && d.holds.keys().hasOnly(item.targetSnapshot.directions) && holdAt(d.holds,d.holds.keys(),0) && holdAt(d.holds,d.holds.keys(),1) && holdAt(d.holds,d.holds.keys(),2) && holdAt(d.holds,d.holds.keys(),3) && holdAt(d.holds,d.holds.keys(),4) && holdAt(d.holds,d.holds.keys(),5) && holdAt(d.holds,d.holds.keys(),6) && holdAt(d.holds,d.holds.keys(),7) && !d.keys().hasAny(['reps','weightKg','durationSeconds','distanceKm']) :
+                d.status == 'logged' && integer(d.durationSeconds,1,86400) && (!('distanceKm' in d) || number(d.distanceKm,0,2000)) && !d.keys().hasAny(['reps','weightKg','holds'])); }
+        }
+      }
+      match /importReceipts/{operationId} {
+        allow read: if owner(uid);
+        allow create: if owner(uid) && request.resource.data.keys().hasOnly(['operationId','fileDigest','mapping','createdIds','completedAt']) && request.resource.data.operationId == operationId
+          && request.resource.data.fileDigest is string && request.resource.data.fileDigest.size() == 64 && request.resource.data.mapping is map
+          && request.resource.data.createdIds is list && request.resource.data.createdIds.size() <= 20 && request.resource.data.completedAt == request.time;
+      }
+    }
+    match /{document=**} { allow read, write: if false; }
+  }
+}

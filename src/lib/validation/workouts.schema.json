@@ -1,0 +1,226 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "units": {
+      "const": "kg"
+    },
+    "exercises": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "kind": {
+            "enum": [
+              "strength",
+              "isometric",
+              "duration"
+            ]
+          },
+          "loadMode": {
+            "enum": [
+              "external",
+              "bodyweight",
+              "none"
+            ]
+          },
+          "weightConvention": {
+            "enum": [
+              "total",
+              "per_dumbbell",
+              "machine_stack",
+              "as_logged",
+              "bodyweight_adjustment",
+              "none"
+            ]
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 2000
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "kind",
+          "loadMode",
+          "weightConvention"
+        ]
+      }
+    },
+    "workouts": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "items": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 40,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "itemKey": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+                },
+                "exerciseKey": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+                },
+                "target": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "sets": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 30
+                        },
+                        "repsMin": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 1000
+                        },
+                        "repsMax": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 1000
+                        }
+                      },
+                      "required": [
+                        "sets",
+                        "repsMin",
+                        "repsMax"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "rounds": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 30
+                        },
+                        "directions": {
+                          "type": "array",
+                          "minItems": 1,
+                          "maxItems": 8,
+                          "uniqueItems": true,
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 120
+                          }
+                        },
+                        "holdSecondsMin": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 600
+                        },
+                        "holdSecondsMax": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 600
+                        }
+                      },
+                      "required": [
+                        "rounds",
+                        "directions",
+                        "holdSecondsMin",
+                        "holdSecondsMax"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "durationSeconds": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 86400
+                        }
+                      },
+                      "required": [
+                        "durationSeconds"
+                      ]
+                    }
+                  ]
+                },
+                "restSeconds": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 3600
+                },
+                "defaultWeightKg": {
+                  "type": "number",
+                  "minimum": -2000,
+                  "maximum": 2000
+                },
+                "notes": {
+                  "type": "string",
+                  "maxLength": 2000
+                }
+              },
+              "required": [
+                "itemKey",
+                "exerciseKey",
+                "target",
+                "restSeconds"
+              ]
+            }
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "items"
+        ]
+      }
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "units",
+    "exercises",
+    "workouts"
+  ],
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Workout Tracker import v1",
+  "description": "Cross-reference, kind/target, load/convention, min/max and payload limits are additionally checked by the runtime semantic validator."
+}
