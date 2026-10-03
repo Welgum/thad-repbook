@@ -2,6 +2,8 @@
 
 **Thad Castle energy. Transactional integrity.**
 
+**Live on Vercel:** [thad-repbook.vercel.app](https://thad-repbook.vercel.app/)
+
 A workout tracker for lifting weights and retaining evidence. Programs, sets, rest timers, history, and progress charts. Written in TypeScript because “pretty sure I did twelve” is not a numeric type.
 
 The operating model is simple: Thad sets the expectations. Alex Moran wants to go home. Repbook records what actually happened.
