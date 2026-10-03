@@ -79,7 +79,14 @@ export async function initializeUser(
 	} catch (error) {
 		// A concurrent first-login transaction may hit immutable-create rules after the other tab commits.
 		// Only a server-confirmed atomic seed marker turns that race into success.
-		const winner = await getDocFromServer(ref);
-		if (winner.data()?.seedVersion !== 1) throw error;
+		if ((error as { code?: string })?.code === 'permission-denied') {
+			try {
+				const winner = await getDocFromServer(ref);
+				if (winner.data()?.seedVersion === 1) return;
+			} catch {
+				// Keep the original error, which explains why initialization failed.
+			}
+		}
+		throw error;
 	}
 }

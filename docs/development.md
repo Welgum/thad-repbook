@@ -49,6 +49,12 @@ npx firebase deploy --only firestore:rules,firestore:indexes --project YOUR_FIRE
 
 This app uses user-initiated `signInWithPopup`, with cancellation, popup-blocked, unauthorized-domain and network error states. No redirect flow or third-party-storage redirect workaround is assumed. OAuth on real mobile Safari and Chrome must be checked on the actual authorized deployment domain. A local emulator sign-in does not verify real Google OAuth.
 
+### Login succeeds but the training space does not load
+
+Authentication and Firestore are separate services. If Google sign-in succeeds but startup fails, confirm that the Cloud Firestore API is enabled for the configured project, that a **`(default)` database** exists, and that the repository's Firestore rules have been deployed to that same project. An API response containing `SERVICE_DISABLED` means Firestore must be enabled; changing Authentication's authorized domains will not fix it. After enabling the service, allow a few minutes for the change to propagate, then retry.
+
+Startup shows a retry screen if authentication or the initial data load has not finished within 20 seconds. Retrying preserves existing programs and does not duplicate starter data.
+
 ## Vercel deployment
 
 1. Push this directory to your repository, then import that repository in Vercel.

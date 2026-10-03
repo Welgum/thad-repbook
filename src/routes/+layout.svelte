@@ -123,7 +123,7 @@
 			<h1>Let’s reconnect.</h1>
 			<p role="alert">{$app.error}</p>
 			<button class="button lime" onclick={() => location.reload()}>Retry safely</button>
-			<p class="muted">Initialization is atomic. Retrying will not create duplicates.</p>
+			<p class="muted">Your training data is safe. Retrying won’t create duplicates.</p>
 		</div>
 	</main>
 {:else}<main class="center-state" aria-busy="true">
