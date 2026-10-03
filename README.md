@@ -1,73 +1,119 @@
-# Repbook 💪
+# Repbook
 
-**Lift. Log. Rest. Remember what you lifted last time.**
+**Thad Castle energy. Transactional integrity.**
 
-Repbook is a personal workout journal for the part of your brain that forgets every number immediately after a hard set. Build your programs, log your training, and watch your progress take shape in a bold, colorful interface that feels at home on your phone.
+A workout tracker for lifting weights and retaining evidence. Programs, sets, rest timers, history, and progress charts. Written in TypeScript because “pretty sure I did twelve” is not a numeric type.
+
+The operating model is simple: Thad sets the expectations. Alex Moran wants to go home. Repbook records what actually happened.
 
 <p align="center">
   <img src="docs/images/slow-clap.webp" width="498" alt="An approving slow clap." />
   <br />
-  <em>When you actually log the set instead of saying “I’ll remember it.”</em>
+  <em>The Goat House has successfully persisted one piece of information.</em>
 </p>
 
-## Your training, with receipts
+## Scope of operations
 
-| In the gym | In Repbook |
+| Capability | Implementation |
 | --- | --- |
-| “What am I training today?” | Five starter programs and a shared exercise library, ready to make your own. |
-| “What did I lift last time?” | Previous results alongside your current exercise. Your memory can take a rest day. |
-| “Was that set three or four?” | Log reps, weight, and set status as you go. |
-| “How long have I been scrolling?” | A rest timer that keeps its deadline when you switch tabs or refresh. |
-| “Am I getting anywhere?” | Calendar, workout history, and progress views for programs and individual exercises. |
-| “I trained yesterday. Forgot to log it.” | Add a past session with its actual workout date. |
+| Workout programs | Create, edit, duplicate, archive, or import JSON. Five programs and fifteen exercises are seeded on first login. You supply the weights. |
+| Set logging | Reps, load, failed sets, skipped sets, and previous results. Failure is a valid state. Thad is handling this poorly. |
+| Exercise types | Loaded strength, bodyweight with added load or assistance, isometric holds, and timed cardio. Kilograms throughout. |
+| Rest timers | Persisted deadlines that survive refreshes and background tabs. Alex Moran cannot extend the rest period by minimizing the browser. |
+| History | Calendar, session details, and retrospective entries for workouts you actually did but neglected to document. |
+| Progress | Overview, per-program, and per-exercise statistics, with exclusions at four levels. |
+| Program imports | JSON Schema validation, semantic checks, and atomic import receipts. Includes an example bundle and a prompt for preparing plans with an AI assistant. |
 
-## Built for the whole session
+The starter programs have weekday names. These are labels. Running Monday’s workout on Thursday does not require a database migration.
 
-**More than barbells.** Track loaded and bodyweight strength work, timed isometric holds, and cardio. Weights use kilograms, with explicit conventions for dumbbells, machines, and assisted movements.
+## Failure modes we took personally
 
-**Your plan can change.** Create, edit, duplicate, and archive programs. Adjust sets, rep ranges, and rest times. Completed sessions keep a snapshot of the plan you used, so editing next week’s workout preserves last week’s history.
+### The gym loses internet
 
-**Gym Wi-Fi can have a bad day.** Start a session online, then keep logging if the connection drops. Entries save in your browser and sync when the connection returns. The app shows what is still waiting to sync; let it finish before signing out or clearing browser data.
+A session starts online. After that, each logged change commits to **IndexedDB before the UI acknowledges it**. A local outbox retries synchronization with Firestore. The interface distinguishes `Saved locally`, `Syncing`, `Synced`, `Sync failed`, and `Conflict`.
 
-**The numbers stay useful.** Keep a session in your journal while excluding it from statistics. Exclude a program, an exercise, or one exercise occurrence when you need to. Missing training days stay missing rather than turning into invented zeroes.
+Unsent changes survive a refresh. They do not survive you clearing browser storage. Wait for sync before signing out; the app checks for pending changes.
 
-**Bring your own program.** Import a JSON workout bundle with validation before saving. The app includes a format guide, example file, and a prompt you can give an AI assistant to help prepare your plan.
+### Two tabs both think they are team captain
 
-## From first login to first set
+Session writes use Firestore transactions, revision checks, stable record IDs, and operation IDs. Another tab or device must explicitly take over editing. Conflicts preserve the local draft and require a resolution.
 
-1. Sign in with Google to open your personal training space.
-2. Pick one of the five starter programs, build your own, or import a plan.
-3. Start a workout, log your sets, and let the rest timer do its job.
-4. Finish the session and find it in your calendar and progress views.
+Thad yelling louder does not increase his revision number.
 
-The starter library contains **15 exercises and 5 programs**. You can run any program on any day. Monday’s workout will survive being done on Tuesday.
+### Someone rewrites the training plan
 
-## Run your own Repbook
+Sessions retain immutable exercise and target snapshots. Updating a template changes future training. Coach Daniels cannot retroactively improve your bench press by editing a document.
 
-Built with **Svelte 5, SvelteKit, TypeScript, Firebase Authentication, and Cloud Firestore**, with a Vercel adapter ready for deployment.
+### The statistics get creative
 
-With Node 22.12+ on the 22.x line or Node 24 installed:
+Volume is calculated within an exercise and its weight convention. A dumbbell value means the convention you selected. Missing dates remain missing. Extra sets do not inflate planned completion.
+
+You can exclude a program, an exercise, a session, or one exercise occurrence from statistics while keeping the underlying history. This is useful for experiments and bad data. It will also accept your explanation for that particular Tuesday.
+
+## The machinery
+
+| Layer | Stack |
+| --- | --- |
+| UI | Svelte 5, SvelteKit 2, TypeScript; bold borders and large controls for use between sets |
+| Identity | Firebase Authentication with Google popup sign-in |
+| Database | Cloud Firestore with user-scoped Security Rules |
+| Local persistence | IndexedDB outbox; the Firestore SDK itself uses an in-memory cache |
+| Hosting | Official SvelteKit Vercel adapter |
+| Validation | AJV and JSON Schema, plus domain checks |
+| Verification | Vitest, Firebase emulators, and Playwright |
+
+Data lives under `users/{uid}`. Sessions store their exercise snapshots in the header and their logged records in a subcollection. Dates retain the workout’s original time zone. Rest timers store a deadline rather than trusting a browser tab to count seconds responsibly.
+
+For the full layout, data guarantees, and deployment steps, see the [development guide](docs/development.md). The architecture has received more supervision than the Goat House.
+
+## Local deployment, zero athletic eligibility required
+
+Use Node **22.12+ on the 22.x line**, or **24.x**.
 
 ```sh
 npm ci
 cp -n .env.example .env
 ```
 
-Fill in the four `PUBLIC_FIREBASE_*` values in `.env`, then run:
+Set the four `PUBLIC_FIREBASE_*` values in `.env`, enable Google sign-in, and deploy the Firestore rules and indexes using the [Firebase setup instructions](docs/development.md#firebase--google-setup). The copy command preserves an existing `.env`; Git ignores that file.
 
 ```sh
 npm run dev
 ```
 
-Open <http://127.0.0.1:5173>. The `.env` file is ignored by Git; keep your own configuration there. The copy command preserves an existing `.env`.
+Open <http://127.0.0.1:5173>.
 
-The **[development guide](docs/development.md)** covers Firebase and Google sign-in setup, trying the app with local emulators, Vercel deployment, architecture, and test commands.
+To run entirely against local Firebase emulators, install Java 21+ and use two terminals:
 
-## Make it better
+```sh
+# Terminal 1
+npm run emulators
 
-Found a bug or have an idea? [Open an issue](https://github.com/Welgum/thad-repbook/issues) with what happened and what you expected. Contributions are welcome; see the [development guide](docs/development.md#commands-and-tests) for the checks to run before a pull request.
+# Terminal 2
+PUBLIC_USE_EMULATORS=true npm run dev
+```
+
+Use **Continue with test account**. Emulator access is restricted to development builds. Production requires an actual Google account; “Coach knows me” is not an authentication provider.
+
+For Vercel, follow the [deployment guide](docs/development.md#vercel-deployment). Firebase configuration goes in Vercel’s environment settings, and the deployed hostname goes in Firebase’s authorized domains.
+
+## Contributing
+
+[Open an issue](https://github.com/Welgum/thad-repbook/issues) with reproduction steps, expected behavior, and actual behavior. “It’s broken, bro” will be treated as an incomplete bug report, however confidently delivered.
+
+For code changes, start with:
+
+```sh
+npm run check
+npm run lint
+npm run test
+npm run build
+```
+
+Changes to persistence, authentication, or Security Rules also need the [emulator and browser checks](docs/development.md#commands-and-tests). A passing bench press does not satisfy CI.
 
 ## License
 
-Source code and documentation are available under the [MIT License](LICENSE).
-The third-party reaction image is excluded from this license; rights remain with its respective owners.
+Code and documentation: [MIT](LICENSE). The third-party reaction image is excluded; rights remain with its respective owners.
+
+Thad has not reviewed the pull requests.
