@@ -3,6 +3,8 @@
 	import { app } from '$lib/repositories/app';
 	import { sessionsInRange } from '$lib/repositories/data';
 	import { overview } from '$lib/analytics';
+	import { progressionReport, shiftMonth, monthOf } from '$lib/analytics/progression';
+	import ProgressDashboard from '$lib/components/ProgressDashboard.svelte';
 	import { dateInZone, shiftDate } from '$lib/domain/time';
 	import type { Session, Workout } from '$lib/domain/types';
 	import Icon from '$lib/components/Icon.svelte';
@@ -15,12 +17,20 @@
 		error = $state(''),
 		start = $state(false),
 		selected = $state<Workout | undefined>();
-	const stats = $derived(overview(sessions, $app));
+	const today = dateInZone(Date.now(), $app.profile!.timeZone);
+	const recentSessions = $derived(sessions.filter((s) => s.workoutDate >= shiftDate(today, -27)));
+	const stats = $derived(overview(recentSessions, $app));
+	const progression = $derived(
+		progressionReport(sessions, $app, { from: `${shiftMonth(monthOf(today), -2)}-01`, to: today })
+	);
 	const workouts = $derived($app.workouts.filter((w) => !w.archivedAt));
 	onMount(async () => {
 		try {
-			const today = dateInZone(Date.now(), $app.profile!.timeZone);
-			sessions = await sessionsInRange($app.user!.uid, shiftDate(today, -27), today);
+			sessions = await sessionsInRange(
+				$app.user!.uid,
+				`${shiftMonth(monthOf(today), -3)}-01`,
+				today
+			);
 		} catch (e) {
 			error = (e as Error).message;
 		} finally {
@@ -49,6 +59,12 @@
 		>
 	</div>
 </div>
+{#if error}<p class="notice error" role="alert">{error}</p>{:else if loading}<p
+		class="muted"
+		role="status"
+	>
+		Loading your progression…
+	</p>{:else}<ProgressDashboard report={progression} through={today} compact />{/if}
 <section class="hero">
 	<div>
 		<span class="badge">A STRONGER YOU STARTS HERE</span>
@@ -96,7 +112,6 @@
 		<div class="stat-bottom">Pick any one, any day</div>
 	</div>
 </div>
-{#if error}<p class="notice error" role="alert">{error}</p>{/if}
 <div class="section-heading">
 	<h2>Your next good session.</h2>
 	<a class="text-link" href="/workouts">All workouts <Icon name="arrow" size={15} /></a>
@@ -115,10 +130,10 @@
 	<h2>Recently in the books.</h2>
 	<a class="text-link" href="/history">View history <Icon name="arrow" size={15} /></a>
 </div>
-{#if loading}<p class="muted">Loading your recent training…</p>{:else if sessions.length}<div
+{#if loading}<p class="muted">Loading your recent training…</p>{:else if recentSessions.length}<div
 		class="stack"
 	>
-		{#each sessions.slice(0, 3) as s (s.id)}<SessionCard session={s} />{/each}
+		{#each recentSessions.slice(0, 3) as s (s.id)}<SessionCard session={s} />{/each}
 	</div>{:else}<EmptyState
 		icon="history"
 		title="The first page is yours."

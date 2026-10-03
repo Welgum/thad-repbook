@@ -9,11 +9,14 @@
 		sessionIncluded,
 		itemIncluded
 	} from '$lib/analytics';
-	import { dateInZone, shiftDate, durationLabel, displayDate } from '$lib/domain/time';
+	import { dateInZone, shiftDate, durationLabel, displayDate, validDate } from '$lib/domain/time';
 	import { recordLabel, loadLabel } from '$lib/domain/session';
 	import type { Session } from '$lib/domain/types';
 	import EmptyState from './EmptyState.svelte';
+	import ProgressDashboard from './ProgressDashboard.svelte';
+	import { progressionReport, monthOf, shiftMonth } from '$lib/analytics/progression';
 	import Icon from './Icon.svelte';
+	import { chartTrend } from './chart-trend';
 	let { workoutId = '', exerciseId = '' }: { workoutId?: string; exerciseId?: string } = $props();
 	const today = dateInZone(Date.now(), $app.profile!.timeZone);
 	let range = $state('12'),
@@ -30,9 +33,27 @@
 	let generation = 0;
 	const workout = $derived($app.workouts.find((w) => w.id === workoutId));
 	const exercise = $derived($app.exercises.find((e) => e.id === (exerciseId || filterExercise)));
+	const rangeStart = $derived(
+		range === 'all'
+			? undefined
+			: range === 'custom'
+				? from
+				: shiftDate(today, -Number(range) * 7 + 1)
+	);
+	const rangeEnd = $derived(range === 'custom' ? to : today);
+	const progression = $derived(
+		progressionReport(sessions, $app, {
+			from: rangeStart,
+			to: rangeEnd,
+			workoutId: filterWorkout,
+			exerciseId: filterExercise
+		})
+	);
 	const selection = $derived(
 		sessions.filter(
 			(s) =>
+				(!rangeStart || s.workoutDate >= rangeStart) &&
+				s.workoutDate <= rangeEnd &&
 				(!filterWorkout || s.templateId === filterWorkout) &&
 				(!filterExercise ||
 					s.exercises.some((i) => i.exerciseId === filterExercise && itemIncluded(s, i, $app)))
@@ -87,19 +108,35 @@
 				: 'seconds'
 			: 'workouts / week'
 	);
+	const highlightLoad = $derived(exercise?.kind === 'strength' && exercise.loadMode === 'external');
+	const chartTrends = $derived(
+		chart.map((point, i) => {
+			const previous = chart[i - 1]?.value;
+			return chartTrend(
+				highlightLoad && point.value !== null && previous != null ? point.value - previous : null,
+				0
+			);
+		})
+	);
 	const max = $derived(Math.max(1, ...chart.map((p) => p.value || 0)));
 	$effect(() => {
-		const start =
-			range === 'all'
-				? undefined
-				: range === 'custom'
-					? from
-					: shiftDate(today, -Number(range) * 7 + 1);
-		const end = range === 'custom' ? to : today;
+		// Read the whole first month plus its comparison month. Activity totals still use exact dates.
+		const end = rangeEnd;
 		const token = ++generation;
 		loading = true;
 		error = '';
 		count = 0;
+		if (
+			!validDate(end) ||
+			(rangeStart !== undefined && (!validDate(rangeStart) || rangeStart > end)) ||
+			end > today
+		) {
+			error = 'Choose a valid date range ending today or earlier.';
+			sessions = [];
+			loading = false;
+			return;
+		}
+		const start = rangeStart ? `${shiftMonth(monthOf(rangeStart), -1)}-01` : undefined;
 		sessionsInRange($app.user!.uid, start, end, (n) => {
 			if (token === generation) count = n;
 		})
@@ -137,9 +174,9 @@
 		</div>
 	</div>
 	<div class="form-grid">
-		{#if range === 'custom'}<label>From<input type="date" bind:value={from} /></label><label
-				>Through<input type="date" bind:value={to} /></label
-			>{/if}<label
+		{#if range === 'custom'}<label
+				>From<input type="date" bind:value={from} max={to || today} /></label
+			><label>Through<input type="date" bind:value={to} min={from} max={today} /></label>{/if}<label
 			>Workout<select bind:value={filterWorkout} disabled={Boolean(workoutId)}
 				><option value="">All workouts</option>{#each $app.workouts as w (w.id)}<option value={w.id}
 						>{w.name}</option
@@ -159,7 +196,91 @@
 		role="status"
 	>
 		Loading {range === 'all' ? 'all history in pages' : 'your training'}… {count} sessions read.
-	</p>{:else}
+	</p>{:else if !error}
+	{#if !exercise || (exercise.kind === 'strength' && exercise.loadMode === 'external')}
+		<ProgressDashboard report={progression} through={rangeEnd} />
+	{/if}
+	{#if exercise?.loadMode === 'bodyweight'}<div class="tabs">
+			{#each [['all', 'All modes'], ['bodyweight', 'Bodyweight'], ['added', 'Added weight'], ['assistance', 'Assistance']] as [value, label] (value)}<button
+					class:active={mode === value}
+					onclick={() => (mode = value as typeof mode)}>{label}</button
+				>{/each}
+		</div>
+		<p class="field-help">
+			0 = bodyweight · +kg = added load · −kg = assistance. No bodyweight volume or estimated 1RM is
+			calculated.
+		</p>{/if}
+	{#if exercise?.kind === 'strength' && exercise.loadMode !== 'none'}<label
+			style="max-width:290px;margin:20px 0"
+			>Best reps at selected {loadLabel(exercise)}<input
+				inputmode="decimal"
+				bind:value={load}
+				placeholder="Choose a load (signed for bodyweight)"
+			/></label
+		>{/if}
+	{#if chart.length}<section class="card">
+			<h2>
+				{exercise
+					? exercise.kind === 'strength' && exercise.loadMode === 'external'
+						? 'Max recorded load'
+						: 'Your logged performance'
+					: 'A habit in the making.'}
+			</h2>
+			<p class="muted">
+				{chartUnit} · {exercise
+					? 'One bar per session'
+					: 'Dates mark the start of each training week'}
+			</p>
+			{#if highlightLoad}
+				<div class="trend-legend" aria-label="Load change color legend">
+					<span class="trend-value trend-increase">↗ Higher load</span>
+					<span class="trend-value trend-steady">→ Same load</span>
+					<span class="trend-value trend-decrease">↘ Lower load</span>
+				</div>
+				<p class="field-help">
+					Compared with the previous session’s recorded load. Rep counts may differ.
+				</p>
+			{/if}
+			<div
+				class="chart-bars"
+				role="img"
+				aria-label={`Training chart in ${chartUnit}. Full data table below.`}
+			>
+				{#each chart as point, i (point)}<div
+						class={`chart-column trend-${chartTrends[i].tone}`}
+						title={`${displayDate(point.date)} · ${point.label} · ${point.value ?? 'N/A'} ${chartUnit}${highlightLoad ? ' · ' + chartTrends[i].label + ' load vs. previous session' : ''}`}
+					>
+						<span class="trend-value"
+							><span aria-hidden="true">{chartTrends[i].symbol}</span> {point.value ?? '—'}</span
+						>
+						<div
+							class="chart-bar"
+							style:height={`${Math.max(3, ((point.value || 0) / max) * 140)}px`}
+						></div>
+						<time class="chart-date" datetime={point.date}>
+							<span>{displayDate(point.date).split(', ')[0]}</span>
+							<span>{point.date.slice(0, 4)}</span>
+						</time>
+					</div>{/each}
+			</div>
+			<div class="scroll-table" style="margin-top:20px">
+				<table>
+					<caption class="field-help">Accessible chart data · {chartUnit}</caption><thead
+						><tr><th>Date</th><th>Session / period</th><th>{chartUnit}</th></tr></thead
+					><tbody
+						>{#each chart as point (point)}<tr
+								><td>{displayDate(point.date)}</td><td>{point.label}</td><td
+									>{point.value ?? 'N/A'}</td
+								></tr
+							>{/each}</tbody
+					>
+				</table>
+			</div>
+		</section>{:else}<EmptyState
+			icon="progress"
+			title="Progress starts with your first entry."
+			description="Complete a workout in this date range to see your numbers. Excluded sessions stay in history."
+		/>{/if}
 	<div class="stats-grid">
 		<div class="stat-card">
 			<div class="stat-top">Included workouts</div>
@@ -195,69 +316,6 @@
 	<p class="field-help">
 		A marked final failed attempt adds 0.5 to counted reps, best reps, and exercise volume.
 	</p>
-	{#if exercise?.loadMode === 'bodyweight'}<div class="tabs">
-			{#each [['all', 'All modes'], ['bodyweight', 'Bodyweight'], ['added', 'Added weight'], ['assistance', 'Assistance']] as [value, label] (value)}<button
-					class:active={mode === value}
-					onclick={() => (mode = value as typeof mode)}>{label}</button
-				>{/each}
-		</div>
-		<p class="field-help">
-			0 = bodyweight · +kg = added load · −kg = assistance. No bodyweight volume or estimated 1RM is
-			calculated.
-		</p>{/if}
-	{#if exercise?.kind === 'strength' && exercise.loadMode !== 'none'}<label
-			style="max-width:290px;margin:20px 0"
-			>Best reps at selected {loadLabel(exercise)}<input
-				inputmode="decimal"
-				bind:value={load}
-				placeholder="Choose a load (signed for bodyweight)"
-			/></label
-		>{/if}
-	{#if chart.length}<section class="card">
-			<h2>
-				{exercise
-					? exercise.kind === 'strength' && exercise.loadMode === 'external'
-						? 'Max recorded load'
-						: 'Your logged performance'
-					: 'A habit in the making.'}
-			</h2>
-			<p class="muted">
-				{chartUnit} · {exercise ? 'One bar per session' : 'Weeks with logged training'}
-			</p>
-			<div
-				class="chart-bars"
-				role="img"
-				aria-label={`Training chart in ${chartUnit}. Full data table below.`}
-			>
-				{#each chart as point (point)}<div
-						class="chart-column"
-						title={`${displayDate(point.date)} · ${point.label} · ${point.value ?? 'N/A'} ${chartUnit}`}
-					>
-						<span>{point.value ?? '—'}</span>
-						<div
-							class="chart-bar"
-							style:height={`${Math.max(3, ((point.value || 0) / max) * 140)}px`}
-						></div>
-					</div>{/each}
-			</div>
-			<div class="scroll-table" style="margin-top:20px">
-				<table>
-					<caption class="field-help">Accessible chart data · {chartUnit}</caption><thead
-						><tr><th>Date</th><th>Session / period</th><th>{chartUnit}</th></tr></thead
-					><tbody
-						>{#each chart as point (point)}<tr
-								><td>{displayDate(point.date)}</td><td>{point.label}</td><td
-									>{point.value ?? 'N/A'}</td
-								></tr
-							>{/each}</tbody
-					>
-				</table>
-			</div>
-		</section>{:else}<EmptyState
-			icon="progress"
-			title="Progress starts with your first entry."
-			description="Complete a workout in this date range to see your numbers. Excluded sessions stay in history."
-		/>{/if}
 	{#if exercise}<div class="section-heading"><h2>The numbers behind the chart.</h2></div>
 		{#each exerciseRows as { s, m } (s.id)}<details class="card" style="margin-bottom:16px">
 				<summary><strong>{displayDate(s.workoutDate)} · {s.nameSnapshot}</strong></summary>

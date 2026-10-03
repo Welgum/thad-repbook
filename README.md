@@ -23,7 +23,7 @@ The operating model is simple: Thad sets the expectations. Alex Moran wants to g
 | Exercise types | Loaded strength, bodyweight with added load or assistance, isometric holds, and timed cardio. Kilograms throughout. |
 | Rest timers | Persisted deadlines that survive refreshes and background tabs. Alex Moran cannot extend the rest period by minimizing the browser. |
 | History | Calendar, session details, and retrospective entries for workouts you actually did but neglected to document. |
-| Progress | Overview, per-program, and per-exercise statistics, with exclusions at four levels. |
+| Progress | Monthly strength index, fastest-improving lifts, and exercise load trends lead the dashboard. Compare programs or exercises, with exclusions at four levels. |
 | Program imports | JSON Schema validation, semantic checks, and atomic import receipts. Includes an example bundle and a prompt for preparing plans with an AI assistant. |
 
 The starter programs have weekday names. These are labels. Running Monday’s workout on Thursday does not require a database migration.

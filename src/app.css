@@ -12,6 +12,14 @@
 	--yellow: #ffe49c;
 	--purple: #d6c8f0;
 	--muted: #73756c;
+	--trend-up: #21613d;
+	--trend-up-fill: #dcefe3;
+	--trend-down: #9a431c;
+	--trend-down-fill: #f9e0d1;
+	--trend-steady: #5c655d;
+	--trend-steady-fill: #e7eae4;
+	--trend-unavailable: #516476;
+	--trend-unavailable-fill: #e4ebf2;
 	--border: 2px solid var(--ink);
 	--shadow: 4px 4px 0 var(--ink);
 }
@@ -1124,21 +1132,58 @@ code {
 	flex: 1;
 	margin: 0;
 }
+/* Shared chart colors keep values, marks and legends consistent. */
+.trend-increase {
+	--trend-ink: var(--trend-up);
+	--trend-fill: var(--trend-up-fill);
+}
+.trend-decrease {
+	--trend-ink: var(--trend-down);
+	--trend-fill: var(--trend-down-fill);
+}
+.trend-steady {
+	--trend-ink: var(--trend-steady);
+	--trend-fill: var(--trend-steady-fill);
+}
+.trend-unavailable {
+	--trend-ink: var(--trend-unavailable);
+	--trend-fill: var(--trend-unavailable-fill);
+}
+.trend-value {
+	color: var(--trend-ink);
+}
+.trend-badge {
+	color: var(--trend-ink);
+	background: var(--trend-fill);
+	border-color: var(--trend-ink);
+}
+.trend-legend {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px 16px;
+	margin: 12px 0;
+	font-size: 11px;
+	line-height: 1.5;
+}
+.trend-legend span {
+	white-space: nowrap;
+	font-weight: 650;
+}
 .chart-bars {
 	display: flex;
 	align-items: flex-end;
 	gap: 12px;
-	min-height: 160px;
+	min-height: 210px;
 	overflow-x: auto;
-	padding: 15px 5px 0;
-	border-bottom: 2px solid var(--ink);
+	padding: 15px 5px 5px;
 }
 .chart-column {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
 	justify-content: flex-end;
-	min-width: 35px;
+	min-width: 60px;
 	flex: 1;
 	gap: 6px;
 	font-size: 10px;
@@ -1146,10 +1191,18 @@ code {
 .chart-bar {
 	width: 100%;
 	max-width: 55px;
-	background: var(--lime);
-	border: 1.5px solid var(--ink);
-	border-bottom: 0;
+	background: var(--trend-fill, var(--trend-unavailable-fill));
+	border: 1.5px solid var(--trend-ink, var(--trend-unavailable));
 	border-radius: 4px 4px 0 0;
+}
+.chart-date {
+	display: grid;
+	gap: 2px;
+	text-align: center;
+	white-space: nowrap;
+	font-size: 11px;
+	line-height: 1.4;
+	color: var(--muted);
 }
 .chart-column > span {
 	font-weight: 750;

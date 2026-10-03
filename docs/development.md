@@ -106,6 +106,18 @@ A session's `workoutDate` and `timeZoneAtStart` preserve its original calendar d
 
 External volume is recorded load × reps within one exercise and convention. Dumbbell values are never doubled; different exercise volumes are never combined into total tonnage. Bodyweight adjustments are signed and separated into modes. Extra units do not inflate completion. Chart data is also available in tables, and missing dates are not invented as zero results.
 
+## Strength progression
+
+Home and Progress lead with a monthly weight progression dashboard. The month picker defaults to the latest month with a valid comparison, or the latest month when there is not enough history. The strength index uses **100 as the previous calendar month**: 105 means comparable recorded weights rose about 5%; 95 means they fell about 5%. The line chart shows each month's percentage change, not cumulative growth. Changes within ±1% count as steady.
+
+Comparisons use positive external loads, the same exercise identity and weight convention, and the same number of full completed reps. For each rep count, the calculation takes the highest load per calendar day, the median of those daily loads within each calendar week, and the median of those weekly values within the month. Both months must have observations at least seven days apart. The median log ratio across matching rep counts gives one change per exercise; the geometric mean of exercise ratios gives the overall index. Each exercise has equal weight regardless of how many times it was trained. Repeating sets or sessions does not add points, and weekly medians reduce isolated outliers. This is a recorded-load trend, not an estimated one-rep maximum or a physiological strength measurement.
+
+The fastest progression card ranks increases above 1%. The exercise table's load sparklines summarize top loads across all rep counts; its percentage column uses only matched rep counts. New exercises, missing months, changed conventions, and insufficient matching history remain unscored. Missing data is never replaced with zero or carried forward. The compared-exercise count makes coverage visible, since the eligible exercise mix can change between months. Bodyweight adjustments, holds, and cardio retain their separate performance charts. Failed half-rep markers affect existing repetition/volume statistics but do not increase the strength index.
+
+Progress reads the complete first displayed calendar month and its preceding baseline month, even for a custom range beginning mid-month. The cutoff date still applies. Activity totals and session charts use the exact selected dates. Home reads four calendar months to provide comparison history while retaining its last-four-weeks activity totals. All calculations use the shared exclusion pipeline and workout-date strings, preserving historical dates across time zones. No data migration is needed.
+
+The progression unit tests cover frequency invariance, outliers, matched reps, exclusions, sparse history, conventions, and date boundaries. The progression browser test seeds only the local Firebase emulator and checks ranking, filters, exact-range totals, chart order, and mobile overflow.
+
 ## Remaining deployment checks
 
 Before publishing your own instance, verify real Google sign-in, mobile keyboard behavior, deep-link refreshes, and Firestore reads and writes on your authorized deployment domain. See [VERIFICATION.md](../VERIFICATION.md) for checks performed during development and their results.
