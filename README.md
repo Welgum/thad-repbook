@@ -1,95 +1,73 @@
-# Repbook — Workout Tracker
+# Repbook 💪
 
-A personal training journal implementing `workout_tracker_requirements.md`: Svelte 5, SvelteKit 2, TypeScript, Google authentication, Cloud Firestore, and the official Vercel adapter. The interface and starter content are English. All dependencies are pinned in `package-lock.json`.
+**Lift. Log. Rest. Remember what you lifted last time.**
 
-## Run locally
+Repbook is a personal workout journal for the part of your brain that forgets every number immediately after a hard set. Build your programs, log your training, and watch your progress take shape in a bold, colorful interface that feels at home on your phone.
 
-Use Node 22 LTS (22.12 or newer) or Node 24 LTS. Node 20.19+ is also supported by the pinned dependencies. Use `npm ci`, not an unpinned framework generator.
+<p align="center">
+  <img src="docs/images/slow-clap.webp" width="498" alt="An approving slow clap." />
+  <br />
+  <em>When you actually log the set instead of saying “I’ll remember it.”</em>
+</p>
+
+## Your training, with receipts
+
+| In the gym | In Repbook |
+| --- | --- |
+| “What am I training today?” | Five starter programs and a shared exercise library, ready to make your own. |
+| “What did I lift last time?” | Previous results alongside your current exercise. Your memory can take a rest day. |
+| “Was that set three or four?” | Log reps, weight, and set status as you go. |
+| “How long have I been scrolling?” | A rest timer that keeps its deadline when you switch tabs or refresh. |
+| “Am I getting anywhere?” | Calendar, workout history, and progress views for programs and individual exercises. |
+| “I trained yesterday. Forgot to log it.” | Add a past session with its actual workout date. |
+
+## Built for the whole session
+
+**More than barbells.** Track loaded and bodyweight strength work, timed isometric holds, and cardio. Weights use kilograms, with explicit conventions for dumbbells, machines, and assisted movements.
+
+**Your plan can change.** Create, edit, duplicate, and archive programs. Adjust sets, rep ranges, and rest times. Completed sessions keep a snapshot of the plan you used, so editing next week’s workout preserves last week’s history.
+
+**Gym Wi-Fi can have a bad day.** Start a session online, then keep logging if the connection drops. Entries save in your browser and sync when the connection returns. The app shows what is still waiting to sync; let it finish before signing out or clearing browser data.
+
+**The numbers stay useful.** Keep a session in your journal while excluding it from statistics. Exclude a program, an exercise, or one exercise occurrence when you need to. Missing training days stay missing rather than turning into invented zeroes.
+
+**Bring your own program.** Import a JSON workout bundle with validation before saving. The app includes a format guide, example file, and a prompt you can give an AI assistant to help prepare your plan.
+
+## From first login to first set
+
+1. Sign in with Google to open your personal training space.
+2. Pick one of the five starter programs, build your own, or import a plan.
+3. Start a workout, log your sets, and let the rest timer do its job.
+4. Finish the session and find it in your calendar and progress views.
+
+The starter library contains **15 exercises and 5 programs**. You can run any program on any day. Monday’s workout will survive being done on Tuesday.
+
+## Run your own Repbook
+
+Built with **Svelte 5, SvelteKit, TypeScript, Firebase Authentication, and Cloud Firestore**, with a Vercel adapter ready for deployment.
+
+With Node 22.12+ on the 22.x line or Node 24 installed:
 
 ```sh
-nvm use
 npm ci
-cp .env.example .env
+cp -n .env.example .env
+```
+
+Fill in the four `PUBLIC_FIREBASE_*` values in `.env`, then run:
+
+```sh
 npm run dev
 ```
 
-Fill in the four `PUBLIC_FIREBASE_*` settings from Firebase Console → Project settings → Your apps → Web app configuration. These are public web configuration values, **not** service-account credentials. With no configuration, the app shows an explicit setup screen. There is no in-memory production account or fabricated workout history.
+Open <http://127.0.0.1:5173>. The `.env` file is ignored by Git; keep your own configuration there. The copy command preserves an existing `.env`.
 
-## Develop without a Firebase account
+The **[development guide](docs/development.md)** covers Firebase and Google sign-in setup, trying the app with local emulators, Vercel deployment, architecture, and test commands.
 
-The app can use the actual Firebase Authentication and Firestore emulators. Install Java 21+ and make `java` available on PATH. On Apple Silicon with Homebrew OpenJDK, for example: `export PATH="/opt/homebrew/opt/openjdk/bin:$PATH"`.
+## Make it better
 
-```sh
-npm run emulators
-```
+Found a bug or have an idea? [Open an issue](https://github.com/Welgum/thad-repbook/issues) with what happened and what you expected. Contributions are welcome; see the [development guide](docs/development.md#commands-and-tests) for the checks to run before a pull request.
 
-In another terminal:
+## License
 
-```sh
-PUBLIC_USE_EMULATORS=true npm run dev
-```
-
-Open `http://127.0.0.1:5173`. Use **Continue with test account** and any test email, or exercise the Google-provider emulator dialog. Test accounts use a fixed, emulator-only credential. Emulator controls and connections are guarded by SvelteKit's compile-time `dev` flag and cannot be enabled in a production build. Emulator data is temporary unless you explicitly export it with Firebase CLI. Emulator UI: `http://127.0.0.1:4000`.
-
-## Firebase / Google setup
-
-1. Create a Firebase project and register a Web App.
-2. Enable Authentication → Sign-in method → Google, and set the support email.
-3. Create a Cloud Firestore database. Choose the region deliberately; it cannot be changed casually afterward.
-4. Add your actual localhost, stable staging, and production hostnames under Authentication → Settings → Authorized domains. Arbitrary Vercel preview hostnames are not automatically authorized.
-5. Set `PUBLIC_FIREBASE_API_KEY`, `PUBLIC_FIREBASE_AUTH_DOMAIN`, `PUBLIC_FIREBASE_PROJECT_ID`, and `PUBLIC_FIREBASE_APP_ID` in `.env` / Vercel environment settings.
-6. Deploy the rules and indexes to your real project (the checked-in default deliberately points to a demo project):
-
-```sh
-npx firebase login
-npx firebase deploy --only firestore:rules,firestore:indexes --project YOUR_FIREBASE_PROJECT_ID
-```
-
-This app uses user-initiated `signInWithPopup`, with cancellation, popup-blocked, unauthorized-domain and network error states. No redirect flow or third-party-storage redirect workaround is assumed. OAuth on real mobile Safari and Chrome must be checked on the actual authorized deployment domain. A local emulator sign-in does not verify real Google OAuth.
-
-## Vercel deployment
-
-1. Push this directory to your repository, then import that repository in Vercel.
-2. Select the SvelteKit preset, the project root, Node 22.x or 24.x, install command `npm ci`, and build command `npm run build`.
-3. Set the four public Firebase variables for the relevant Vercel environments. Leave `PUBLIC_USE_EMULATORS` unset or false. Prefer a separate Firebase project for staging / previews.
-4. Deploy Firestore rules and indexes separately using the command above. Do not leave test-mode rules enabled.
-5. Add the final Vercel/custom hostname to Firebase authorized domains. Deploy the site, then test Google sign-in, a Firestore write, refresh on `/calendar`, `/workouts/<id>`, and `/session/<id>`, and sign-out on that URL.
-
-`@sveltejs/adapter-vercel` generates `.vercel/output`. No always-running server, local server filesystem, service account, or separate backend is needed. No production deployment is performed automatically by this repository.
-
-## Commands and tests
-
-```sh
-npm run check             # Svelte + TypeScript, including accessibility diagnostics
-npm run lint              # ESLint, TypeScript and Svelte rules
-npm run test              # Domain / analytics / validation / timer / date unit tests
-npm run build             # Reproduce public contracts and build for Vercel
-npm run test:rules        # Firestore emulator: authorization and seed idempotency
-npx playwright install chromium
-npm run test:integration  # Starts auth + Firestore emulators and runs browser flows
-```
-
-`test:integration` manages its own dev server on port 5173. Stop unrelated servers on that port first. `npm run test:e2e` instead uses emulators you have already started. Screenshots and retained failure traces are written to `test-results/` (gitignored). Unit tests do not require credentials or Java. Rules and browser tests use `demo-repbook` and cannot read production data.
-
-## Architecture and data guarantees
-
-- `src/lib/domain`: typed entities, snapshots, unit accounting, numeric input, explicit date grouping, and deadline-based rest timers.
-- `src/lib/analytics`: the shared inclusion predicate, four independent exclusion scopes, completion, volume, historical suggestions and exercise metrics.
-- `src/lib/validation/workouts.schema.json`: canonical JSON Schema. The editor and importer use this schema plus semantic checks in `import.ts`. `npm run sync:contracts` copies it to `static/workouts.schema.json`.
-- `src/lib/seed/bundle.json`: the exact appendix's 15 shared exercise definitions and five programs. The same source produces the downloadable example. Weights and performed history are not seeded. Thursday is retained in the requirements as an optional sixth program.
-- `src/lib/seed/initialize.ts`: one online transaction with stable seed IDs and `seedVersion: 1`. Concurrent login, retry, and later archived/edited starter programs are handled without replacement.
-- `src/lib/firebase`: browser-only SDK initialization. Memory SDK cache avoids sharing persistent Firestore caches between accounts; the explicitly managed session outbox uses IndexedDB.
-- `src/lib/repositories`: profile/catalog subscriptions, date-range queries, history pagination, atomic import receipts, and per-session local drafts and revision-checked transactions.
-- `src/lib/components`: reusable journal UI, workout editor, session logging, number inputs, dialogs, timer, history cards, and accessible chart tables.
-
-Storage paths are `users/{uid}`, `exercises`, `workouts`, `sessions`, nested `sessions/{id}/records`, and `importReceipts`. Ordered, immutable session exercise snapshots are embedded in each session header (maximum 40); an independent exerciseStates map stores per-occurrence notes and exclusions, and actual records are separate documents. This allows the rules to protect snapshots with a direct equality check. History is never stored in one user document. Audit writes use Firestore server timestamps; action timing uses separate UTC client timestamps. Firestore rules enforce ownership, allowed fields, critical numeric bounds, immutable identities/conventions, and revisions. Deleted history is soft-deleted.
-
-A session starts online with an atomic active-session pointer. Every log commits to IndexedDB before the UI acknowledges it or starts rest. Network flushing uses stable record IDs / operation IDs and a revision check; server acknowledgments are distinguished from local saving. Refresh restores pending drafts and deadlines. New tabs/devices must take over editing explicitly. Conflicts preserve the local version and offer server/local resolution, with a local backup before replacement. The outbox is UID-scoped; sign-out is blocked while unsent changes remain. Clearing browser storage will remove unsubmitted local data, so sync first.
-
-A session's `workoutDate` and `timeZoneAtStart` preserve its original calendar day across midnight, DST, travel, and preference changes. Past entry never runs a rest timer and keeps unknown duration as `null`. Programs can run on any weekday. Archiving preserves statistics; explicit exclusions affect statistics without erasing history. Changed exercise measurement conventions always create a new variant, even before a first logged result, to avoid silently altering programs already using that identity.
-
-External volume is recorded load × reps within one exercise and convention. Dumbbell values are never doubled; different exercise volumes are never combined into total tonnage. Bodyweight adjustments are signed and separated into modes. Extra units do not inflate completion. Chart data is also available in tables, and missing dates are not invented as zero results.
-
-## Remaining deployment checks
-
-No Firebase project configuration, Vercel credentials, or production hostname was supplied. Real Google OAuth, physical-device keyboard behavior, and production-domain routing/write checks therefore require the owner's configured deployment. See `VERIFICATION.md` for checks performed in this workspace and their results.
+Source code and documentation are available under the [MIT License](LICENSE).
+The third-party reaction image is excluded from this license; rights remain with its respective owners.
