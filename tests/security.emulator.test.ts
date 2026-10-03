@@ -161,3 +161,63 @@ it('enforces record bounds, immutable links, revision checks and session snapsho
 		updateDoc(sessionRef, { revision: 1, notes: 'stale', updatedAt: serverTimestamp() })
 	);
 });
+
+it('accepts optional strength failure markers and rejects invalid types, statuses, and exercise kinds', async () => {
+	const { materialize } = await import('../src/lib/seed/initialize');
+	const { makeSession, serializeSession } = await import('../src/lib/domain/session');
+	const seed = (await import('../src/lib/seed/bundle.json')).default;
+	const { exercises, workouts } = materialize(
+		seed as import('../src/lib/domain/types').Bundle,
+		'seed-v1'
+	);
+	const session = makeSession(workouts[0], exercises, 'UTC', 'editor');
+	const db = env.authenticatedContext('failure-user').firestore();
+	const sessionRef = doc(db, `users/failure-user/sessions/${session.id}`);
+	await setDoc(sessionRef, {
+		...serializeSession(session),
+		createdAt: serverTimestamp(),
+		updatedAt: serverTimestamp()
+	});
+	const base = {
+		id: 'failure',
+		sessionExerciseId: session.exercises[0].id,
+		sessionExerciseOrder: 0,
+		kind: 'strength',
+		plannedUnitIndex: 0,
+		isExtra: false,
+		status: 'logged',
+		reps: 8,
+		weightKg: 50,
+		lastRepFailed: true,
+		loggedAtClient: Date.now(),
+		syncedAtServer: serverTimestamp(),
+		revision: 1,
+		operationId: 'failure-op',
+		deletedAt: null
+	};
+	const ref = doc(sessionRef, 'records', base.id);
+	await assertSucceeds(setDoc(ref, base));
+	for (const override of [
+		{ lastRepFailed: 'yes' },
+		{ lastRepFailed: 0.5 },
+		{ reps: 8.5 },
+		{ reps: 0, status: 'failed' },
+		{ status: 'skipped' }
+	]) {
+		await assertFails(setDoc(ref, { ...base, ...override, revision: 2 }));
+	}
+	await assertSucceeds(setDoc(ref, { ...base, reps: 0, revision: 2 }));
+	const { lastRepFailed: _marker, ...legacy } = base;
+	await assertSucceeds(setDoc(ref, { ...legacy, revision: 3 }));
+	const iso = session.exercises[4];
+	const { reps: _reps, weightKg: _weight, ...common } = base;
+	const isoRecord = {
+		...common,
+		id: 'round',
+		kind: 'isometric',
+		sessionExerciseId: iso.id,
+		sessionExerciseOrder: 4,
+		holds: { Front: 10, Back: 10, Left: 10, Right: 10 }
+	};
+	await assertFails(setDoc(doc(sessionRef, 'records', 'round'), isoRecord));
+});

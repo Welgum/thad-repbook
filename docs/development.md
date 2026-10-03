@@ -65,6 +65,14 @@ Startup shows a retry screen if authentication or the initial data load has not 
 
 `@sveltejs/adapter-vercel` generates `.vercel/output`. No always-running server, local server filesystem, service account, or separate backend is needed. No production deployment is performed automatically by this repository.
 
+## Final-rep failure logging
+
+For strength records, `reps` stores completed whole repetitions. The optional `lastRepFailed: true` marker records one additional final attempt at muscle failure, counted as **0.5 rep**. For example, 8 completed reps plus this marker gives 8.5 counted reps. The marker resets after each logged set and is not copied from previous-result suggestions. Existing records without it keep their original totals.
+
+Counted reps feed total reps, best reps at a selected load, and per-exercise volume. A marked attempt with 0 completed reps counts as 0.5; an unmarked failed set with 0 reps remains incomplete. Plan completion still counts planned sets, not repetitions. Statistics expose final-rep failure counts and apply the usual exclusions. The marker is only valid on logged strength records, never skipped/failed records or isometric/cardio entries.
+
+Deploy the updated `firestore.rules` **before deploying this client change** using the Firebase command above. Old rules reject the new optional field; existing clients and records remain compatible with the new rules.
+
 ## Commands and tests
 
 ```sh

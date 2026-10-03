@@ -42,6 +42,25 @@
 	const session = $derived(draft?.session);
 	const item = $derived(session?.exercises[selected]);
 	const metrics = $derived(session ? sessionMetrics(session) : null);
+	const exerciseProgress = $derived.by(() => {
+		const current = session;
+		return current
+			? current.exercises.map((exercise, index) => ({
+					exercise,
+					index,
+					metrics: sessionMetrics({ ...current, exercises: [exercise] }),
+					unitName:
+						exercise.exerciseSnapshot.kind === 'strength'
+							? 'sets'
+							: exercise.exerciseSnapshot.kind === 'isometric'
+								? 'rounds'
+								: 'activities'
+				}))
+			: [];
+	});
+	const incompleteExercises = $derived(
+		exerciseProgress.filter(({ metrics }) => metrics.completed < metrics.planned)
+	);
 	const readonly = $derived(session?.editorId !== editorIdSafe() || draft?.status === 'Conflict');
 	const unitIndex = $derived(session && item ? nextUnit(session, item) : null);
 	const suggestion = $derived(item ? previousResult(past, item, $app) : undefined);
@@ -307,8 +326,13 @@
 								{suggestion}
 								onlog={log}
 							/>{/key}{:else if !readonly}<div class="empty-state">
-							<h3>That’s the planned work logged.</h3>
-							<p>Move to the next exercise, or add an extra unit.</p>
+							{#if exerciseProgress[selected].metrics.completed === exerciseProgress[selected].metrics.planned}
+								<h3>That’s the planned work logged.</h3>
+								<p>Move to the next exercise, or add an extra unit.</p>
+							{:else}
+								<h3>All entries saved; some work is incomplete.</h3>
+								<p>Review failed, skipped, or partial entries under Logged here.</p>
+							{/if}
 						</div>{/if}
 				</div>
 				{#if !readonly}<div class="actions" style="margin-top:18px">
@@ -455,7 +479,12 @@
 							selected = i;
 							showExtra = false;
 						}}
-						><span>{ex.exerciseSnapshot.name}<small>{plan(ex.targetSnapshot)}</small></span
+						><span
+							>{ex.exerciseSnapshot.name}<small>{plan(ex.targetSnapshot)}</small>
+							<small
+								>{exerciseProgress[i].metrics.completed}/{exerciseProgress[i].metrics.planned}
+								{exerciseProgress[i].unitName} completed</small
+							></span
 						>{#if i === selected}<Icon name="arrow" size={15} />{/if}</button
 					>{/each}
 			</div>
@@ -484,10 +513,40 @@
 	>
 	<Dialog bind:open={finish} title="Put this one in the books?"
 		><p>{metrics.completed} of {metrics.planned} planned units completed. {metrics.extra} extra.</p>
-		{#if metrics.completed < metrics.planned}<p class="notice">
-				This is a partial workout. Unfinished units stay unperformed; no results will be filled in
-				for you.
-			</p>{/if}<button
+		{#if incompleteExercises.length}
+			<p>
+				This is a partial workout. Review the exercises below, or finish with your saved results.
+			</p>
+			<div class="stack" style="margin:16px 0">
+				{#each incompleteExercises as progress (progress.exercise.id)}
+					<div class="notice">
+						<strong>{progress.exercise.exerciseSnapshot.name}</strong>
+						<p>
+							{progress.metrics.completed} of {progress.metrics.planned} planned {progress.unitName} completed.
+						</p>
+						{#if 'directions' in progress.exercise.targetSnapshot}
+							<p class="field-help">
+								Each round needs a saved time above 0 for
+								{progress.exercise.targetSnapshot.directions.join(', ')}. Edit a partial round under
+								Logged here, or log a missing round.
+							</p>
+						{:else if progress.exercise.exerciseSnapshot.kind === 'strength'}
+							<p class="field-help">
+								Unlogged, skipped, and failed sets with 0 counted reps stay incomplete.
+							</p>
+						{/if}
+						<button
+							class="button small"
+							onclick={() => {
+								selected = progress.index;
+								showExtra = false;
+								finish = false;
+							}}>Review {progress.exercise.exerciseSnapshot.name}</button
+						>
+					</div>
+				{/each}
+			</div>
+		{/if}<button
 			class="button lime full"
 			disabled={busy}
 			onclick={() => guard(() => end('completed'))}>{busy ? 'Saving…' : 'Finish workout'}</button

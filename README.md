@@ -19,7 +19,7 @@ The operating model is simple: Thad sets the expectations. Alex Moran wants to g
 | Capability | Implementation |
 | --- | --- |
 | Workout programs | Create, edit, duplicate, archive, or import JSON. Five programs and fifteen exercises are seeded on first login. You supply the weights. |
-| Set logging | Reps, load, failed sets, skipped sets, and previous results. Failure is a valid state. Thad is handling this poorly. |
+| Set logging | Reps, load, skipped sets, and previous results. Mark a final attempt at muscle failure to count it as 0.5 rep, with failure counts in statistics. Thad is handling this poorly. |
 | Exercise types | Loaded strength, bodyweight with added load or assistance, isometric holds, and timed cardio. Kilograms throughout. |
 | Rest timers | Persisted deadlines that survive refreshes and background tabs. Alex Moran cannot extend the rest period by minimizing the browser. |
 | History | Calendar, session details, and retrospective entries for workouts you actually did but neglected to document. |

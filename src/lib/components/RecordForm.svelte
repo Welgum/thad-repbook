@@ -30,6 +30,7 @@
 		holds = $state<Record<string, string>>({}),
 		notes = $state(''),
 		failed = $state(false),
+		lastRepFailed = $state(false),
 		error = $state(''),
 		busy = $state(false),
 		ready = $state(false),
@@ -58,6 +59,7 @@
 		distance = source?.distanceKm === undefined ? '' : String(source.distanceKm);
 		notes = record?.notes || '';
 		failed = record?.status === 'failed';
+		lastRepFailed = record?.lastRepFailed === true;
 		if ('directions' in item.targetSnapshot)
 			holds = Object.fromEntries(
 				item.targetSnapshot.directions.map((d) => [
@@ -80,6 +82,7 @@
 				const saved = JSON.parse(localStorage.getItem(storageKey) || 'null');
 				if (saved) {
 					({ reps, weight, mode, seconds, distance, holds, notes, failed } = saved);
+					lastRepFailed = saved.lastRepFailed === true;
 					touched = true;
 				}
 			} catch {
@@ -104,7 +107,17 @@
 			try {
 				localStorage.setItem(
 					storageKey,
-					JSON.stringify({ reps, weight, mode, seconds, distance, holds, notes, failed })
+					JSON.stringify({
+						reps,
+						weight,
+						mode,
+						seconds,
+						distance,
+						holds,
+						notes,
+						failed,
+						lastRepFailed
+					})
 				);
 			} catch {
 				/* The committed log still uses durable IndexedDB. */
@@ -132,7 +145,11 @@
 			};
 			if (r.kind === 'strength') {
 				r.reps = parseNumber(reps, 0, 1000, true);
-				if (r.reps === 0 && !failed) throw new Error('Mark this set as Failed to record 0 reps.');
+				if (r.reps === 0 && !failed && !lastRepFailed)
+					throw new Error('For 0 full reps, mark a failed final attempt or a failed set.');
+				if (failed && lastRepFailed)
+					throw new Error('Choose a failed final attempt or a failed set, not both.');
+				if (lastRepFailed) r.lastRepFailed = true;
 				if (failed && r.reps !== 0)
 					throw new Error('A failed set must have 0 reps. Uncheck Failed for a successful set.');
 				r.status = failed ? 'failed' : 'logged';
@@ -151,11 +168,32 @@
 				if (distance.trim()) r.distanceKm = parseNumber(distance, 0, 2000);
 			}
 			await onlog(r);
-			// Keep the button disabled across the browser's double-tap window.
-			if (!record) await new Promise((resolve) => setTimeout(resolve, 500));
 			if (!record) {
 				notes = '';
 				failed = false;
+				lastRepFailed = false;
+				// The final planned entry unmounts this form. Clear per-set flags explicitly,
+				// so opening an extra set cannot restore the previous set's failure marker.
+				try {
+					localStorage.setItem(
+						storageKey,
+						JSON.stringify({
+							reps,
+							weight,
+							mode,
+							seconds,
+							distance,
+							holds,
+							notes,
+							failed,
+							lastRepFailed
+						})
+					);
+				} catch {
+					/* The committed result is already durable in IndexedDB. */
+				}
+				// Keep the button disabled across the browser's double-tap window.
+				await new Promise((resolve) => setTimeout(resolve, 500));
 			}
 		} catch (e) {
 			error = (e as Error).message;
@@ -212,12 +250,29 @@
 						required
 					/>{/if}
 			</div>
+			<label class="check-label">
+				<input
+					type="checkbox"
+					bind:checked={lastRepFailed}
+					onchange={() => {
+						if (lastRepFailed) failed = false;
+					}}
+				/>
+				Muscle failure on final rep (+0.5)
+			</label>
+			<p class="field-help">
+				Enter completed full reps above. With this checked, 8 full reps plus a failed final attempt
+				counts as 8.5 reps in your results and statistics. Confirm it separately for each set.
+			</p>
 			<label class="check-label"
 				><input
 					type="checkbox"
 					bind:checked={failed}
 					onchange={() => {
-						if (failed) reps = '0';
+						if (failed) {
+							reps = '0';
+							lastRepFailed = false;
+						}
 					}}
 				/> Failed set (0 reps)</label
 			>

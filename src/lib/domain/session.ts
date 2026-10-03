@@ -87,9 +87,15 @@ export function parseNumber(value: string, min: number, max: number, integer = f
 		throw new Error(`Enter ${integer ? 'a whole number' : 'a number'} from ${min} to ${max}.`);
 	return n;
 }
+// Reps remain whole completed repetitions in storage. A final failed attempt is an explicit marker.
+export function countedReps(record: SessionRecord): number {
+	return record.kind === 'strength'
+		? (record.reps ?? 0) + (record.lastRepFailed === true ? 0.5 : 0)
+		: 0;
+}
 export function successful(record: SessionRecord, item: SessionExercise): boolean {
 	if (record.deletedAt != null || record.status !== 'logged') return false;
-	if (record.kind === 'strength') return (record.reps ?? 0) > 0;
+	if (record.kind === 'strength') return countedReps(record) > 0;
 	if (record.kind === 'duration') return (record.durationSeconds ?? 0) > 0;
 	return (
 		'directions' in item.targetSnapshot &&
@@ -112,7 +118,7 @@ export function recordLabel(r: SessionRecord, item: SessionExercise): string {
 			r.weightKg === undefined
 				? ''
 				: ` · ${r.weightKg > 0 && item.exerciseSnapshot.loadMode === 'bodyweight' ? '+' : ''}${r.weightKg} ${loadLabel(item.exerciseSnapshot)}`;
-		return `${r.reps} reps${weight}${r.status === 'failed' ? ' · Failed' : ''}`;
+		return `${countedReps(r)} reps${weight}${r.lastRepFailed ? ` · ${r.reps} full + 0.5 final failed rep` : r.status === 'failed' ? ' · Failed' : ''}`;
 	}
 	if (r.kind === 'isometric')
 		return Object.entries(r.holds || {})

@@ -106,6 +106,7 @@ export interface SessionRecord {
 	isExtra: boolean;
 	status: 'logged' | 'failed' | 'skipped';
 	reps?: number;
+	lastRepFailed?: boolean;
 	weightKg?: number;
 	holds?: Record<string, number>;
 	durationSeconds?: number;

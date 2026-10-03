@@ -1,5 +1,5 @@
 import type { Exercise, Session, SessionExercise, SessionRecord, Workout } from '../domain/types';
-import { successful, units } from '../domain/session';
+import { countedReps, successful, units } from '../domain/session';
 import { weekOf } from '../domain/time';
 export interface Catalog {
 	workouts: Workout[];
@@ -37,6 +37,7 @@ export function sessionMetrics(s: Session, c?: Catalog) {
 		completed = 0,
 		extra = 0,
 		sets = 0,
+		failureSets = 0,
 		reps = 0,
 		rounds = 0,
 		holdSeconds = 0,
@@ -49,7 +50,8 @@ export function sessionMetrics(s: Session, c?: Catalog) {
 		).size;
 		extra += good.filter((r) => r.isExtra).length;
 		sets += good.filter((r) => r.kind === 'strength').length;
-		reps += good.reduce((sum, r) => sum + (r.reps || 0), 0);
+		failureSets += good.filter((r) => r.kind === 'strength' && r.lastRepFailed === true).length;
+		reps += good.reduce((sum, r) => sum + countedReps(r), 0);
 		rounds += good.filter((r) => r.kind === 'isometric').length;
 		holdSeconds += s.records
 			.filter(
@@ -63,6 +65,7 @@ export function sessionMetrics(s: Session, c?: Catalog) {
 		completed,
 		extra,
 		sets,
+		failureSets,
 		reps,
 		rounds,
 		holdSeconds,
@@ -81,6 +84,7 @@ export function overview(sessions: Session[], c: Catalog) {
 	return {
 		count: included.length,
 		sets: included.reduce((n, s) => n + sessionMetrics(s, c).sets, 0),
+		failureSets: included.reduce((n, s) => n + sessionMetrics(s, c).failureSets, 0),
 		duration: durations.length ? durations.reduce((a, b) => a + b, 0) : null,
 		averageDuration: durations.length
 			? durations.reduce((a, b) => a + b, 0) / durations.length
@@ -121,11 +125,14 @@ export function exerciseMetrics(
 	return {
 		entries: filtered,
 		sets: good.filter(({ record }) => record.kind === 'strength').length,
-		reps: good.reduce((n, { record }) => n + (record.reps || 0), 0),
+		failureSets: good.filter(
+			({ record }) => record.kind === 'strength' && record.lastRepFailed === true
+		).length,
+		reps: good.reduce((n, { record }) => n + countedReps(record), 0),
 		maxLoad: loads.length ? Math.max(...loads) : null,
-		bestReps: atLoad.length ? Math.max(...atLoad.map(({ record }) => record.reps || 0)) : null,
+		bestReps: atLoad.length ? Math.max(...atLoad.map(({ record }) => countedReps(record))) : null,
 		volume: external.length
-			? external.reduce((n, { record }) => n + (record.weightKg || 0) * (record.reps || 0), 0)
+			? external.reduce((n, { record }) => n + (record.weightKg || 0) * countedReps(record), 0)
 			: null,
 		rounds: good.filter(({ record }) => record.kind === 'isometric').length,
 		holdSeconds: filtered.reduce(

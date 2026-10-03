@@ -176,16 +176,25 @@
 			<div class="stat-value">
 				{stats.duration === null ? '—' : Math.round(stats.duration / 60)}
 			</div>
-			<div class="stat-bottom">Minutes recorded</div>
+			<div class="stat-bottom">
+				Minutes · average {stats.averageDuration === null
+					? '—'
+					: Math.round(stats.averageDuration / 60)} per session
+			</div>
 		</div>
 		<div class="stat-card">
-			<div class="stat-top">Average session</div>
+			<div class="stat-top">Final-rep failures</div>
 			<div class="stat-value">
-				{stats.averageDuration === null ? '—' : Math.round(stats.averageDuration / 60)}
+				{exercise
+					? exerciseRows.reduce((total, row) => total + row.m.failureSets, 0)
+					: stats.failureSets}
 			</div>
-			<div class="stat-bottom">Minutes · unknowns omitted</div>
+			<div class="stat-bottom">Marked attempts · 0.5 rep each</div>
 		</div>
 	</div>
+	<p class="field-help">
+		A marked final failed attempt adds 0.5 to counted reps, best reps, and exercise volume.
+	</p>
 	{#if exercise?.loadMode === 'bodyweight'}<div class="tabs">
 			{#each [['all', 'All modes'], ['bodyweight', 'Bodyweight'], ['added', 'Added weight'], ['assistance', 'Assistance']] as [value, label] (value)}<button
 					class:active={mode === value}
@@ -253,7 +262,8 @@
 		{#each exerciseRows as { s, m } (s.id)}<details class="card" style="margin-bottom:16px">
 				<summary><strong>{displayDate(s.workoutDate)} · {s.nameSnapshot}</strong></summary>
 				<p class="muted" style="margin-top:15px">
-					{#if exercise.kind === 'strength'}{m.sets} sets · {m.reps} total reps{#if load !== ''}
+					{#if exercise.kind === 'strength'}{m.sets} sets · {m.reps} total reps · {m.failureSets} final-rep
+						failures{#if load !== ''}
 							· Best reps at {load}
 							{loadLabel(exercise)}: {m.bestReps ?? 'N/A'}{/if}{#if m.volume !== null}
 							· Logged load × reps: {m.volume} kg·reps{/if}{:else if exercise.kind === 'isometric'}{m.rounds}
@@ -285,7 +295,7 @@
 					><tr
 						><th>Date</th><th>Workout</th><th>Plan</th><th>Completion</th><th>Extra</th><th
 							>Sets / reps</th
-						><th>Duration</th></tr
+						><th>Final-rep failures</th><th>Duration</th></tr
 					></thead
 				><tbody
 					>{#each ordered as s (s.id)}{@const m = sessionMetrics(s, $app)}<tr
@@ -298,7 +308,7 @@
 								>{m.completed}/{m.planned} · {m.completion === null
 									? 'N/A'
 									: `${Math.round(m.completion * 100)}%`}</td
-							><td>{m.extra}</td><td>{m.sets} / {m.reps}</td><td
+							><td>{m.extra}</td><td>{m.sets} / {m.reps}</td><td>{m.failureSets}</td><td
 								>{durationLabel(s.durationSeconds)}</td
 							></tr
 						>{/each}</tbody
